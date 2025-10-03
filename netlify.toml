@@ -1,0 +1,8 @@
+[build]
+  publish = "."
+  command = "echo 'Deploying EverToolbox'"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
