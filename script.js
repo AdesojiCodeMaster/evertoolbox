@@ -728,3 +728,119 @@
     document.addEventListener("DOMContentLoaded", function () { try { window.updateWordCounter(); } catch (e) { } });
   }
 })();
+
+
+
+
+
+/* ===========================
+   Backend Integration (Option A)
+   =========================== */
+
+// Base URL for backend
+const API_BASE = "https://evertoolbox-backend.onrender.com";
+
+// ---- TTS: Generate & Download Audio ----
+async function handleTTSDownload() {
+  const ta = document.getElementById("tts-input");
+  const sel = document.getElementById("tts-voices");
+  if (!ta || !sel) return alert("TTS input or voice selector missing.");
+
+  const text = ta.value.trim();
+  if (!text) return alert("Enter some text first.");
+
+  const voice = sel.options[sel.selectedIndex]?.text || "default";
+
+  try {
+    const res = await fetch(`${API_BASE}/tts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, voice })
+    });
+
+    if (!res.ok) throw new Error("TTS request failed");
+    const blob = await res.blob();
+
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "speech.mp3";
+    a.click();
+  } catch (err) {
+    console.error(err);
+    alert("Failed to generate audio. Try again.");
+  }
+}
+
+// ---- Document Conversion (PDF, DOCX, etc.) ----
+async function handleDocConvert() {
+  const fileInput = document.getElementById("ic-file");
+  const format = document.getElementById("ic-format");
+  if (!fileInput || !fileInput.files.length) {
+    return alert("Choose a file first.");
+  }
+
+  const file = fileInput.files[0];
+  const targetFormat = format?.value || "pdf";
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("target", targetFormat);
+
+  try {
+    const res = await fetch(`${API_BASE}/convert`, {
+      method: "POST",
+      body: formData
+    });
+    if (!res.ok) throw new Error("Conversion failed");
+
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `converted.${targetFormat}`;
+    a.click();
+  } catch (err) {
+    console.error(err);
+    alert("Conversion error: " + err.message);
+  }
+}
+
+// ---- Image Conversion (extra formats, editing) ----
+async function handleImageEdit() {
+  const fileInput = document.getElementById("ic-file");
+  const thumbSize = document.getElementById("ic-thumb-size");
+  const format = document.getElementById("ic-format");
+  if (!fileInput || !fileInput.files.length) {
+    return alert("Choose an image first.");
+  }
+
+  const file = fileInput.files[0];
+  const targetFormat = format?.value || "png";
+  const size = thumbSize?.value || 512;
+
+  const formData = new FormData();
+  formData.append("image", file);
+  formData.append("target", targetFormat);
+  formData.append("size", size);
+
+  try {
+    const res = await fetch(`${API_BASE}/image/convert`, {
+      method: "POST",
+      body: formData
+    });
+    if (!res.ok) throw new Error("Image conversion failed");
+
+    const blob = await res.blob();
+    const out = document.getElementById("ic-output");
+    if (out) {
+      out.src = URL.createObjectURL(blob);
+    }
+
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `converted.${targetFormat}`;
+    a.click();
+  } catch (err) {
+    console.error(err);
+    alert("Image conversion error: " + err.message);
+  }
+}
