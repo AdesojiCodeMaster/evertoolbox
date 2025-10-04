@@ -31,7 +31,46 @@
     <li><a href="blog.html">Blog</a></li>
     <li><a href="contact.html">Contact</a></li>
   </ul>
-</nav><main class='container'><article class='card'><h1>SEO Analyzer</h1><label>Title<br><input id='seo-title' style='width:100%'></label><label>Meta description<br><textarea id='seo-desc' rows='3' style='width:100%'></textarea></label><label>Primary keywords<br><input id='seo-keywords' style='width:100%'></label><p><button class='btn' onclick='runSeoAnalysis()'>Run analysis</button></p><div id='seo-report' class='card'></div></article></main><footer id="site-footer" class="site-footer" role="contentinfo">
+</nav>
+  <main class='container'>
+    <article class='card'>
+      <h1>SEO Analyzer</h1>
+      <label>Title
+        <br>
+        <input id='seo-title' style='width:100%'>
+      </label>
+      <label>Meta description
+        <br>
+        <textarea id='seo-desc' rows='3' style='width:100%'>
+        </textarea>
+      </label>
+      <label>Primary keywords
+        <br>
+        <input id='seo-keywords' style='width:100%'>
+      </label>
+      <p>
+        <button class='btn' onclick='runSeoAnalysis()'>Run analysis
+        </button>
+      </p>
+      <div id='seo-report' class='card'></div>
+    </article>
+
+
+    <section id="seo-analyzer">
+  <h2>SEO Analyzer</h2>
+  <label for="seo-title">Page Title:</label>
+  <input type="text" id="seo-title" placeholder="Enter your page title" />
+
+  <label for="seo-desc">Meta Description:</label>
+  <textarea id="seo-desc" placeholder="Enter meta description"></textarea>
+
+  <button onclick="runSeoAnalysis()">Analyze</button>
+
+  <div id="seo-report"></div>
+</section>
+
+  </main>
+  <footer id="site-footer" class="site-footer" role="contentinfo">
   <div class="container footer-inner">
     <div class="footer-left">
       <strong>EverToolbox</strong><br><small class="muted">© 2025 EverToolbox. All rights reserved.</small>
