@@ -1,44 +1,62 @@
-/* EverToolbox - consolidated script.js
-   Replaces existing root script.js. Vanilla JS, defensive, enables all tools + UI.
+/* EverToolbox - Unified script.js
+   Replace the root script.js with this file.
+   - Preserves UI (theme/menu)
+   - Implements/fixes the tools: word-counter, case-converter, tts, seo, file-converter, zip/unzip, image tools
+   - Defensive: only attaches handlers when elements exist
 */
 
-/* -----------------------
-   Utility helpers
-   ----------------------- */
 (function () {
   "use strict";
 
+  // --- utilities ---
   const $ = (id) => document.getElementById(id);
   const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
-  const exists = (el) => !!el;
-  const setVisible = (el, show) => {
-    if (!el) return;
-    el.style.display = show ? "" : "none";
+  const exists = (v) => !!v;
+  const setVisible = (el, show) => { if (!el) return; el.style.display = show ? "" : "none"; };
+  const downloadBlob = (blob, filename) => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename || "download";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
 
-  /* -----------------------
-     Theme toggle & mobile menu
-     ----------------------- */
+  // Hide preview images that have no src (prevents broken-image UI)
+  function hideEmptyPreviews() {
+    const previews = document.querySelectorAll("img");
+    previews.forEach(img => {
+      if (!img.getAttribute("src") || img.getAttribute("src") === "") {
+        img.style.display = "none";
+      }
+    });
+  }
+  document.addEventListener("DOMContentLoaded", hideEmptyPreviews);
+
+  /* =========================
+     UI: theme + mobile menu + smooth scroll
+     ========================= */
   (function uiInit() {
-    // set theme from storage or prefers
+    // restore theme
     const stored = localStorage.getItem("theme");
     if (stored) {
-      document.documentElement.setAttribute("data-theme", stored);
+      document.documentElement.setAttribute("data-theme", stored === "dark" ? "dark" : "");
     } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
       document.documentElement.setAttribute("data-theme", "dark");
     }
 
-    on(document, "DOMContentLoaded", function () {
+    document.addEventListener("DOMContentLoaded", function () {
+      // theme toggle
       const themeBtn = $("theme-toggle");
       if (themeBtn) {
         themeBtn.addEventListener("click", function () {
           const now = document.documentElement.getAttribute("data-theme") === "dark" ? "" : "dark";
           document.documentElement.setAttribute("data-theme", now);
-          localStorage.setItem("theme", now || "light");
+          localStorage.setItem("theme", now === "dark" ? "dark" : "light");
         });
       }
 
-      // mobile menu toggle
+      // mobile menu
       const menuBtn = $("mobile-menu-btn");
       const mobileMenu = $("mobile-menu");
       if (menuBtn && mobileMenu) {
@@ -48,123 +66,135 @@
           mobileMenu.setAttribute("aria-hidden", open ? "false" : "true");
         });
         // close on link click
-        mobileMenu.querySelectorAll && mobileMenu.querySelectorAll("a").forEach((a) => {
-          a.addEventListener("click", function () {
+        if (mobileMenu.querySelectorAll) {
+          mobileMenu.querySelectorAll("a").forEach(a => a.addEventListener("click", function () {
             mobileMenu.classList.remove("open");
             menuBtn.setAttribute("aria-expanded", "false");
-          });
-        });
+          }));
+        }
       }
 
       // smooth scroll for anchors
-      document.querySelectorAll && document.querySelectorAll('a[href^="#"]').forEach((a) => {
-        a.addEventListener("click", function (e) {
-          const id = this.getAttribute("href").slice(1);
-          const el = document.getElementById(id);
-          if (el) {
-            e.preventDefault();
-            el.scrollIntoView({ behavior: "smooth", block: "start" });
-          }
+      if (document.querySelectorAll) {
+        document.querySelectorAll('a[href^="#"]').forEach(a => {
+          a.addEventListener("click", function (e) {
+            const id = this.getAttribute("href").slice(1);
+            const el = document.getElementById(id);
+            if (el) {
+              e.preventDefault();
+              el.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+          });
         });
-      });
+      }
     });
   })();
 
-  /* -----------------------
-     Word counter
-     ----------------------- */
+  /* =========================
+     Word Counter — robust
+     ========================= */
   window.countWords = function (text) {
     if (!text) return { words: 0, characters: 0 };
     const chars = text.length;
-    const words = text.trim().split(/\s+/).filter(Boolean).length;
+    const words = text.trim() ? text.trim().split(/\s+/).filter(Boolean).length : 0;
     return { words, characters: chars };
   };
 
   window.updateWordCounter = function () {
-    const ta = $("wc-input") || $("wordInput");
-    const out = $("wc-output") || $("wordCount") || $("charCount");
-    // If there are multiple outputs in the page: try filling them
-    const charEl = $("charCount");
-    const wordEl = $("wordCount");
+    const ta = $("wc-input") || $("wordInput") || document.querySelector("textarea[data-tool='word-counter']");
+    if (!ta) return;
+    const res = countWords(ta.value || "");
+    const wordEl = $("wordCount") || $("wc-words") || $("wc-output");
+    const charEl = $("charCount") || $("wc-chars");
     const sentenceEl = $("sentenceCount");
     const paraEl = $("paraCount");
     const readingEl = $("readingTime");
 
-    if (!ta) return;
-    const res = countWords(ta.value);
-    if (out && out.tagName === "OUTPUT") out.value = `${res.words} words — ${res.characters} characters`;
-    if (wordEl) wordEl.textContent = res.words;
-    if (charEl) charEl.textContent = res.characters;
-    // more stats
-    const text = ta.value.trim();
+    if (wordEl) wordEl.textContent = String(res.words);
+    if (charEl) charEl.textContent = String(res.characters);
+
+    // extra stats
+    const text = (ta.value || "").trim();
     const sentences = text ? text.split(/[.!?]+/).filter(Boolean).length : 0;
     const paras = text ? text.split(/\n+/).filter(Boolean).length : 0;
-    if (sentenceEl) sentenceEl.textContent = sentences;
-    if (paraEl) paraEl.textContent = paras;
+    if (sentenceEl) sentenceEl.textContent = String(sentences);
+    if (paraEl) paraEl.textContent = String(paras);
     if (readingEl) readingEl.textContent = Math.max(1, Math.ceil(res.words / 200)) + " min read";
+
+    // create basic CTA/button if missing on page
+    if (!document.querySelector(".wc-cta")) {
+      try {
+        const container = ta.parentElement || document.body;
+        const cta = document.createElement("p");
+        cta.className = "wc-cta";
+        cta.innerHTML = `<a class="btn" href="tools.html">Try our free Word Counter tool now ✍️</a>`;
+        container.appendChild(cta);
+      } catch (e) { /* ignore DOM issues */ }
+    }
   };
 
-  // attach to inputs if present
   (function attachWordCounter() {
-    const ta = $("wc-input") || $("wordInput");
+    const ta = $("wc-input") || $("wordInput") || document.querySelector("textarea[data-tool='word-counter']");
     if (ta) {
       ta.addEventListener("input", window.updateWordCounter);
-      // initial update
-      window.updateWordCounter();
+      window.updateWordCounter(); // initial
     }
   })();
 
-  /* -----------------------
-     Case converter
-     ----------------------- */
+  /* =========================
+     Case Converter (keeps earlier functions compatible)
+     ========================= */
   window.convertCase = function (mode) {
-    const ta = $("case-input") || $("caseInput");
+    const ta = $("case-input") || $("caseInput") || document.querySelector("textarea[data-tool='case-converter']");
     const out = $("case-output") || $("caseOutput");
     if (!ta) return;
     let v = ta.value || "";
     if (mode === "upper") v = v.toUpperCase();
     else if (mode === "lower") v = v.toLowerCase();
-    else if (mode === "title")
-      v = v.toLowerCase().replace(/\b(\w)/g, function (m, p1) {
-        return p1.toUpperCase();
-      });
+    else if (mode === "title") v = v.toLowerCase().replace(/\b(\w)/g, (m, p) => p.toUpperCase());
     else if (mode === "sentence") v = v.charAt(0).toUpperCase() + v.slice(1).toLowerCase();
-    if (out && out.tagName === "TEXTAREA") out.value = v;
-    else ta.value = v;
+    if (out && out.tagName === "TEXTAREA") out.value = v; else ta.value = v;
   };
 
-  (function attachCaseButtons() {
-    const upper = $("upperBtn") || $("to-upper");
-    const lower = $("lowerBtn") || $("to-lower");
+  // attach any matching buttons
+  (function attachCase() {
+    const up = $("upperBtn") || $("to-upper");
+    const low = $("lowerBtn") || $("to-lower");
     const title = $("titleBtn") || $("to-title");
     const sentence = $("sentenceBtn") || $("to-sentence");
-
-    if (upper) on(upper, "click", () => window.convertCase("upper"));
-    if (lower) on(lower, "click", () => window.convertCase("lower"));
-    if (title) on(title, "click", () => window.convertCase("title"));
-    if (sentence) on(sentence, "click", () => window.convertCase("sentence"));
+    if (up) on(up, "click", () => convertCase("upper"));
+    if (low) on(low, "click", () => convertCase("lower"));
+    if (title) on(title, "click", () => convertCase("title"));
+    if (sentence) on(sentence, "click", () => convertCase("sentence"));
   })();
 
-  /* -----------------------
-     Text-to-Speech
-     ----------------------- */
+  /* =========================
+     Text-to-Speech + optional recording to download
+     ========================= */
   (function ttsInit() {
     const input = $("tts-input") || $("ttsInput");
-    const voicesSelect = $("tts-voices") || $("voiceSelect");
-    const speakButtons = document.querySelectorAll && document.querySelectorAll("[data-tts-play]");
+    const voiceSelect = $("tts-voices") || $("voiceSelect");
+    const speakBtn = $("speakBtn") || document.querySelector("[data-tts-play]") || $("tts-play");
+    const downloadBtn = $("tts-download") || $("tts-download-btn");
 
     window.synth = window.speechSynthesis || null;
 
     function populateVoices() {
-      if (!voicesSelect || !window.synth) return;
+      if (!voiceSelect || !window.synth) return;
       const voices = window.speechSynthesis.getVoices() || [];
-      voicesSelect.innerHTML = "";
+      voiceSelect.innerHTML = "";
       voices.forEach((v, i) => {
         const opt = document.createElement("option");
         opt.value = i;
         opt.textContent = `${v.name} (${v.lang})${v.default ? " — default" : ""}`;
-        voicesSelect.appendChild(opt);
+        opt.dataset.lang = v.lang || "";
+        voiceSelect.appendChild(opt);
       });
+      // try to preserve selection if previously set
+      try {
+        const saved = localStorage.getItem("ttsVoiceIndex");
+        if (saved) voiceSelect.value = saved;
+      } catch (e) {}
     }
 
     if (window.speechSynthesis) {
@@ -174,74 +204,126 @@
 
     window.speakText = function (preload) {
       if (!input) return alert("No text input found.");
-      const text = input.value || (preload ? input.dataset.demo || "" : "");
+      const text = input.value || (preload ? (input.dataset.demo || "") : "");
       if (!text) return alert("Enter text to speak or choose a demo.");
       const u = new SpeechSynthesisUtterance(text);
       const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
-      const selIdx = voicesSelect ? parseInt(voicesSelect.value, 10) : 0;
+      const selIdx = voiceSelect ? parseInt(voiceSelect.value || "0", 10) : 0;
       if (voices && voices[selIdx]) u.voice = voices[selIdx];
-      window.speechSynthesis.cancel();
+      try { window.speechSynthesis.cancel(); } catch (e) {}
       window.speechSynthesis.speak(u);
     };
 
-    // attach click handler to any element with data-tts-play or id speakBtn
-    const speakBtn = $("speakBtn") || $("tts-play");
+    // record & download via getDisplayMedia (tab audio capture) - requires user permission
+    window.recordSpeechAndDownload = async function (filename) {
+      const text = input ? input.value : "";
+      if (!text) return alert("Type text to record and download.");
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        return alert("Your browser does not support recording tab audio (required to download TTS). Use a Chromium browser and allow 'Share audio' when prompted, or use a server-side TTS.");
+      }
+      try {
+        // request tab/display capture (audio)
+        const stream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true });
+        // set up recorder
+        const recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+        const chunks = [];
+        recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+        recorder.start();
+
+        // speak
+        const u = new SpeechSynthesisUtterance(text);
+        const voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+        const selIdx = voiceSelect ? parseInt(voiceSelect.value || "0", 10) : 0;
+        if (voices && voices[selIdx]) u.voice = voices[selIdx];
+
+        // after speech ends stop recorder
+        u.onend = function () {
+          // small timeout to ensure audio stream flushed
+          setTimeout(() => {
+            try { recorder.stop(); } catch (er) {}
+          }, 200);
+        };
+
+        recorder.onstop = function () {
+          const blob = new Blob(chunks, { type: "audio/webm" });
+          downloadBlob(blob, filename || "speech.webm");
+          // stop all tracks on stream
+          stream.getTracks().forEach(t => t.stop());
+        };
+
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(u);
+      } catch (err) {
+        console.error(err);
+        alert("Recording/download failed or was cancelled. " + (err && err.message ? err.message : ""));
+      }
+    };
+
     if (speakBtn) on(speakBtn, "click", () => window.speakText(false));
-    if (speakButtons && speakButtons.length) {
-      speakButtons.forEach((b) => b.addEventListener("click", () => window.speakText(false)));
-    }
+    if (downloadBtn) on(downloadBtn, "click", () => window.recordSpeechAndDownload("tts.webm"));
+
+    // save selected voice index
+    if (voiceSelect) voiceSelect.addEventListener("change", () => {
+      try { localStorage.setItem("ttsVoiceIndex", String(voiceSelect.value)); } catch (e) {}
+    });
   })();
 
-  /* -----------------------
-     SEO Analyzer (basic)
-     ----------------------- */
+  /* =========================
+     SEO Analyzer
+     ========================= */
   (function seoInit() {
-    const titleInput = $("seo-title");
-    const descInput = $("seo-desc");
-    const keywordsInput = $("seo-keywords");
-    const runBtn = $("seo-run") || $("analyzeBtn");
-    const reportEl = $("seo-report") || $("seoOutput");
+    const titleEl = $("seo-title");
+    const descEl = $("seo-desc");
+    const runBtn = $("seo-run") || $("analyzeBtn") || $("seo-run-btn");
+    const out = $("seo-report") || $("seoOutput");
 
     function analyze() {
-      if (!reportEl) return;
-      const title = titleInput ? titleInput.value : "";
-      const desc = descInput ? descInput.value : "";
-      const keywords = keywordsInput ? keywordsInput.value : "";
+      if (!out) return;
+      const title = titleEl ? (titleEl.value || "") : "";
+      const desc = descEl ? (descEl.value || "") : "";
       const words = (title + " " + desc).trim().split(/\s+/).filter(Boolean);
-      const html = [];
-      html.push(`<p><strong>Title length:</strong> ${title.length} characters</p>`);
-      html.push(`<p><strong>Description length:</strong> ${desc.length} characters</p>`);
-      html.push(`<p><strong>Total words:</strong> ${words.length}</p>`);
-      if (keywords) {
-        html.push(`<p><strong>Keywords:</strong> ${keywords}</p>`);
+      const top = {};
+      words.forEach(w => {
+        const k = w.toLowerCase();
+        top[k] = (top[k] || 0) + 1;
+      });
+      const topKeywords = Object.entries(top).sort((a, b) => b[1] - a[1]).slice(0, 6);
+      let html = `<p><strong>Title length:</strong> ${title.length} characters</p>`;
+      html += `<p><strong>Description length:</strong> ${desc.length} characters</p>`;
+      html += `<p><strong>Total words:</strong> ${words.length}</p>`;
+      if (topKeywords.length) {
+        html += `<p><strong>Top keywords:</strong></p><ul>${topKeywords.map(kv => `<li>${kv[0]} — ${kv[1]}</li>`).join("")}</ul>`;
       }
-      reportEl.innerHTML = html.join("");
+      out.innerHTML = html;
     }
 
     if (runBtn) on(runBtn, "click", analyze);
   })();
 
-  /* -----------------------
-     File converter (text + image convert & preview)
-     ----------------------- */
+  /* =========================
+     File Converter (text + image)
+     - Hides previews before load
+     - Supports text downloads and image convert to png/jpeg/webp
+     - For server-only conversions (PDF/DOCX) shows a clear message
+     ========================= */
   (function fileConverterInit() {
     const textName = $("fc-name");
     const textArea = $("fc-text");
-    const fcBtn = $("fc-download") || $("fc-download-btn") || $("downloadTextBtn");
-    const imageFile = $("ic-file") || $("fileInput");
+    const fcBtn = $("fc-download") || $("fc-download-btn") || $("downloadTextBtn") || $("fc-download");
+    const imageFile = $("ic-file") || $("fileInput") || $("file-converter-input");
     const imagePreview = $("ic-output") || $("preview") || $("filePreview");
     const imageFormat = $("ic-format") || $("formatSelect");
-    const imageThumbSize = $("ic-thumb-size") || $("ic-thumb") || null;
-    const imageConvertBtn = $("ic-convert") || $("ic-convert-btn") || $("convertImageBtn");
+    const imageThumbSize = $("ic-thumb-size") || null;
+    const imageConvertBtn = $("ic-convert") || $("ic-convert-btn") || $("convertImageBtn") || $("downloadImageBtn");
+
+    // ensure preview hidden if empty
+    if (imagePreview && (!imagePreview.getAttribute("src") || imagePreview.getAttribute("src") === "")) {
+      imagePreview.style.display = "none";
+    }
 
     window.downloadText = function (filename, content) {
-      const a = document.createElement("a");
       const blob = new Blob([content], { type: "text/plain" });
-      a.href = URL.createObjectURL(blob);
-      a.download = filename || "download.txt";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      downloadBlob(blob, filename || "download.txt");
     };
 
     window.handleTextDownload = function () {
@@ -253,30 +335,272 @@
 
     if (fcBtn) on(fcBtn, "click", window.handleTextDownload);
 
-    // image preview and convert
-    async function imageToDataURL(file, type = "image/png", quality = 0.9, maxW = null, maxH = null) {
+    // image convert helper
+    function imageToDataURL(file, type = "image/png", quality = 0.92, maxW = null, maxH = null) {
       return new Promise((resolve, reject) => {
-        const img = new Image();
         const reader = new FileReader();
+        const img = new Image();
         reader.onload = function (e) {
           img.onload = function () {
-            let w = img.width;
-            let h = img.height;
+            let w = img.width, h = img.height;
             if (maxW || maxH) {
               const scale = Math.min(maxW ? maxW / w : 1, maxH ? maxH / h : 1);
-              if (scale < 1) {
+              if (scale < 1) { w = Math.round(w * scale); h = Math.round(h * scale); }
+            }
+            const canvas = document.createElement("canvas");
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, w, h);
+            try {
+              const data = canvas.toDataURL(type, quality);
+              resolve(data);
+            } catch (err) { reject(err); }
+          };
+          img.onerror = function (err) { reject(err); };
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // convert & download image
+    window.handleImageConvert = async function () {
+      const input = imageFile;
+      const out = imagePreview;
+      if (!input || !out || !input.files || !input.files[0]) return alert("Choose an image first");
+      const typeOption = imageFormat ? (imageFormat.value || "image/png") : "image/png";
+      const allowedImageTypes = ["image/png", "image/jpeg", "image/webp"];
+      if (!allowedImageTypes.includes(typeOption)) {
+        return alert("Requested image format not supported in-browser. Supported: PNG, JPEG, WEBP.");
+      }
+      const thumb = imageThumbSize ? parseInt((imageThumbSize.value || imageThumbSize), 10) : null;
+      try {
+        const data = await imageToDataURL(input.files[0], typeOption, 0.92, thumb, thumb);
+        out.src = data;
+        out.style.display = "";
+        const a = document.createElement("a");
+        a.href = data;
+        const ext = (typeOption || "image/png").split("/")[1];
+        a.download = "converted." + ext;
+        a.click();
+      } catch (err) {
+        console.error(err);
+        alert("Image conversion failed: " + (err && err.message ? err.message : err));
+      }
+    };
+
+    // preview handler (hide until loaded)
+    if (imageFile && imagePreview) {
+      imageFile.addEventListener("change", function (e) {
+        const f = e.target.files && e.target.files[0];
+        if (!f) { imagePreview.src = ""; setVisible(imagePreview, false); return; }
+        if (f.type && f.type.startsWith("image/")) {
+          const r = new FileReader();
+          r.onload = function (ev) { imagePreview.src = ev.target.result; setVisible(imagePreview, true); };
+          r.readAsDataURL(f);
+        } else {
+          imagePreview.src = ""; setVisible(imagePreview, false);
+        }
+      });
+    }
+
+    if (imageConvertBtn) on(imageConvertBtn, "click", window.handleImageConvert);
+  })();
+
+  /* =========================
+     ZIP / Unzip improvements
+     - unzip provides download links for each extracted file (requires JSZip)
+     ========================= */
+  (function zipInit() {
+    const zipInput = $("zip-files") || $("zipInput") || $("zipInputFiles");
+    const zipCreateBtn = $("zipBtn") || $("zip-create") || $("zipCreateBtn");
+    const unzipFileInput = $("unzip-file") || $("unzipFile");
+    const unzipBtn = $("unzipBtn") || $("unzip-extract") || $("zip-unpack");
+    const unzipList = $("unzip-list") || $("zipOutput") || $("zipOutputList");
+
+    window.handleZipCreate = async function () {
+      const files = (zipInput && zipInput.files) || [];
+      if (!files || !files.length) return alert("Select files to zip");
+      try {
+        if (window.JSZip && typeof JSZip === "function" && JSZip.prototype && JSZip.prototype.generateAsync) {
+          const zip = new JSZip();
+          for (let i = 0; i < files.length; i++) { const f = files[i]; zip.file(f.name, await f.arrayBuffer()); }
+          const blob = await zip.generateAsync({ type: "blob" });
+          downloadBlob(blob, "archive.zip");
+          return;
+        } else if (window.LocalZip && typeof window.LocalZip.createZipLike === "function") {
+          const items = [];
+          for (let i = 0; i < files.length; i++) { const f = files[i]; items.push({ name: f.name, arrayBuffer: await f.arrayBuffer() }); }
+          const blob = await window.LocalZip.createZipLike(items);
+          downloadBlob(blob, "archive.bundle");
+          return;
+        } else {
+          alert("No zip library available to create a zip. (JSZip recommended).");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Failed to create zip: " + (err && err.message ? err.message : err));
+      }
+    };
+
+    window.handleZipExtract = async function () {
+      const file = (unzipFileInput && unzipFileInput.files && unzipFileInput.files[0]) || null;
+      if (!file) return alert("Select a zip file to inspect/extract");
+      if (!window.JSZip || typeof JSZip !== "function") {
+        return alert("Unzip requires JSZip (include /libs/jszip.min.js or CDN).");
+      }
+      try {
+        const zip = new JSZip();
+        const data = await file.arrayBuffer();
+        const loaded = await zip.loadAsync(data);
+        if (unzipList) unzipList.innerHTML = "";
+        const links = [];
+        zip.forEach(async (relativePath, zfile) => {
+          if (zfile.dir) {
+            // show folder entry
+            if (unzipList) {
+              const li = document.createElement("li"); li.textContent = relativePath + " (dir)"; unzipList.appendChild(li);
+            }
+          } else {
+            // produce a download link for file content
+            const blob = await zfile.async("blob");
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = relativePath.split("/").pop() || relativePath;
+            a.textContent = "Download " + relativePath;
+            a.style.display = "inline-block";
+            a.style.margin = "6px 0";
+            if (unzipList) {
+              const li = document.createElement("li");
+              li.appendChild(a);
+              unzipList.appendChild(li);
+            } else {
+              links.push(a);
+            }
+          }
+        });
+        if (!unzipList && links.length) {
+          const w = window.open("", "_blank");
+          links.forEach(a => w.document.body.appendChild(a));
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Failed to inspect/unzip: " + (err && err.message ? err.message : err));
+      }
+    };
+
+    if (zipCreateBtn) on(zipCreateBtn, "click", window.handleZipCreate);
+    if (unzipBtn) on(unzipBtn, "click", window.handleZipExtract);
+  })();
+
+  /* =========================
+     Image editor / converter / thumbnail
+     - Adds editing UI if not present: text overlay, color pick, brightness slider
+     ========================= */
+  (function imageEditorInit() {
+    const imageInput = $("imageInput") || $("ic-file") || $("fileInput") || $("thumbInput");
+    const imagePreview = $("imagePreview") || $("ic-output") || $("preview") || $("filePreview");
+    const downloadBtn = $("imageDownloadBtn") || $("downloadBtn") || $("ic-download");
+    const thumbDownloadBtn = $("thumbDownloadBtn") || $("downloadThumbBtn") || null;
+    const thumbSizeInput = $("ic-thumb-size") || $("thumbSize") || null;
+    const imageFormatSelect = $("ic-format") || $("imageFormat") || null;
+
+    if (!imageInput || !imagePreview) return; // no image tooling on this page
+
+    // create small editor UI if not present
+    function ensureEditorUI() {
+      let editor = document.getElementById("et-editor");
+      if (editor) return editor;
+      editor = document.createElement("div");
+      editor.id = "et-editor";
+      editor.style.margin = "12px 0";
+      editor.innerHTML = `
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <label>Overlay text: <input id="et-text" placeholder="Add text"/></label>
+          <label>Text color: <input id="et-text-color" type="color" value="#ffffff"/></label>
+          <label>Font size: <input id="et-font-size" type="number" value="28" style="width:80px"/></label>
+          <label>Brightness: <input id="et-brightness" type="range" min="-100" max="100" value="0"/></label>
+          <label>Overlay color: <input id="et-overlay-color" type="color" value="#000000"/></label>
+          <label style="display:flex;align-items:center">Overlay opacity: <input id="et-overlay-opacity" type="range" min="0" max="1" step="0.05" value="0"/></label>
+          <button id="et-apply" class="btn">Apply edits</button>
+          <button id="et-reset" class="btn">Reset</button>
+        </div>
+      `;
+      // insert after preview if possible
+      try {
+        imagePreview.parentElement.insertBefore(editor, imagePreview.nextSibling);
+      } catch (e) {
+        document.body.appendChild(editor);
+      }
+      return editor;
+    }
+
+    const editor = ensureEditorUI();
+    const etText = document.getElementById("et-text");
+    const etTextColor = document.getElementById("et-text-color");
+    const etFontSize = document.getElementById("et-font-size");
+    const etBrightness = document.getElementById("et-brightness");
+    const etOverlayColor = document.getElementById("et-overlay-color");
+    const etOverlayOpacity = document.getElementById("et-overlay-opacity");
+    const etApply = document.getElementById("et-apply");
+    const etReset = document.getElementById("et-reset");
+
+    // apply edits: draw image to canvas then apply overlay / text / brightness
+    async function applyEditsAndReturnDataURL(file, options = {}) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        const img = new Image();
+        reader.onload = function (e) {
+          img.onload = function () {
+            try {
+              let w = img.width, h = img.height;
+              // limit size for performance
+              const maxPixels = 2500 * 2500; // arbitrary safe cap
+              if (w * h > maxPixels) {
+                const scale = Math.sqrt(maxPixels / (w * h));
                 w = Math.round(w * scale);
                 h = Math.round(h * scale);
               }
-            }
-            const canvas = document.createElement("canvas");
-            canvas.width = w;
-            canvas.height = h;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(img, 0, 0, w, h);
-            const mime = type || "image/png";
-            const data = canvas.toDataURL(mime, quality);
-            resolve(data);
+              const canvas = document.createElement("canvas");
+              canvas.width = w; canvas.height = h;
+              const ctx = canvas.getContext("2d");
+              ctx.drawImage(img, 0, 0, w, h);
+
+              // brightness adjustment: naive per-pixel manipulation
+              if (options.brightness && options.brightness !== 0) {
+                const bright = parseInt(options.brightness, 10); // -100..100
+                const imgd = ctx.getImageData(0, 0, w, h);
+                const data = imgd.data;
+                for (let i = 0; i < data.length; i += 4) {
+                  data[i] = Math.min(255, Math.max(0, data[i] + bright));     // R
+                  data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + bright)); // G
+                  data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + bright)); // B
+                }
+                ctx.putImageData(imgd, 0, 0);
+              }
+
+              // overlay color
+              if (options.overlayColor && options.overlayOpacity && parseFloat(options.overlayOpacity) > 0) {
+                ctx.fillStyle = hexToRgba(options.overlayColor, parseFloat(options.overlayOpacity));
+                ctx.fillRect(0, 0, w, h);
+              }
+
+              // text overlay
+              if (options.text && options.text.trim()) {
+                const fontSize = parseInt(options.fontSize || 28, 10);
+                ctx.font = `${fontSize}px sans-serif`;
+                ctx.fillStyle = options.textColor || "#fff";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(options.text, w / 2, h / 2);
+              }
+
+              const mime = options.mime || "image/png";
+              const dataURL = canvas.toDataURL(mime, options.quality || 0.92);
+              resolve(dataURL);
+            } catch (err) { reject(err); }
           };
           img.onerror = reject;
           img.src = e.target.result;
@@ -286,283 +610,121 @@
       });
     }
 
-    window.handleImageConvert = async function () {
-      const input = imageFile;
-      const out = imagePreview;
-      if (!input || !out || !input.files || !input.files[0]) return alert("Choose an image first");
-      const type = (imageFormat && imageFormat.value) || "image/png";
-      const thumb = imageThumbSize ? parseInt(imageThumbSize.value || imageThumbSize) : null;
-      try {
-        const data = await imageToDataURL(input.files[0], type, 0.9, thumb, thumb);
-        out.src = data;
-        out.style.display = "";
-        const a = document.createElement("a");
-        a.href = data;
-        // convert mime to ext
-        const ext = (type || "image/png").split("/")[1];
-        a.download = "converted." + ext;
-        a.click();
-      } catch (err) {
-        console.error(err);
-        alert("Image conversion failed: " + (err && err.message ? err.message : err));
-      }
-    };
-
-    // preview on file select
-    if (imageFile && imagePreview) {
-      imageFile.addEventListener("change", function (e) {
-        const f = e.target.files && e.target.files[0];
-        if (!f) {
-          imagePreview.src = "";
-          setVisible(imagePreview, false);
-          return;
-        }
-        if (f.type && f.type.startsWith("image/")) {
-          const reader = new FileReader();
-          reader.onload = function (ev) {
-            imagePreview.src = ev.target.result;
-            setVisible(imagePreview, true);
-          };
-          reader.readAsDataURL(f);
-        } else {
-          imagePreview.src = "";
-          setVisible(imagePreview, false);
-        }
-      });
+    function hexToRgba(hex, alpha) {
+      const h = hex.replace("#", "");
+      const bigint = parseInt(h.length === 3 ? h.split("").map(c => c + c).join("") : h, 16);
+      const r = (bigint >> 16) & 255;
+      const g = (bigint >> 8) & 255;
+      const b = bigint & 255;
+      return `rgba(${r},${g},${b},${alpha})`;
     }
 
-    if (imageConvertBtn) on(imageConvertBtn, "click", window.handleImageConvert);
-  })();
-
-  /* -----------------------
-     ZIP / Unzip tool
-     ----------------------- */
-  (function zipInit() {
-    const zipInput = $("zip-files") || $("zipInput");
-    const zipCreateBtn = $("zipBtn") || $("createZipBtn") || $("zip-create");
-    const unzipFileInput = $("unzip-file") || $("unzipFile");
-    const unzipBtn = $("unzipBtn") || $("inspectZipBtn") || $("zip-unpack");
-    const unzipList = $("unzip-list") || $("zipOutput") || $("zipOutputList");
-
-    // local fallback zip creator (very basic concatenation fallback - not a real ZIP)
-    window.LocalZip = window.LocalZip || (function () {
-      return {
-        createZipLike: async function (items) {
-          // This is a fallback that packages raw blobs into a single blob with a crude header.
-          // It is not a real zip file format. JSZip is recommended for full functionality.
-          const parts = [];
-          for (let i = 0; i < items.length; i++) {
-            const it = items[i];
-            const nameBytes = new TextEncoder().encode(it.name);
-            const header = new Uint8Array(4 + nameBytes.length);
-            header[0] = nameBytes.length & 255;
-            header[1] = (nameBytes.length >> 8) & 255;
-            header[2] = 0;
-            header[3] = 0;
-            parts.push(header.buffer, nameBytes.buffer, it.arrayBuffer);
-          }
-          return new Blob(parts, { type: "application/octet-stream" });
-        },
-      };
-    })();
-
-    window.handleZipCreate = async function () {
-      const files = (zipInput && zipInput.files) || [];
-      if (!files || !files.length) return alert("Select files to zip");
-      try {
-        if (window.JSZip && typeof JSZip === "function" && JSZip.prototype && JSZip.prototype.generateAsync) {
-          const zip = new JSZip();
-          for (let i = 0; i < files.length; i++) {
-            const f = files[i];
-            // JSZip supports adding from arrayBuffer
-            zip.file(f.name, await f.arrayBuffer());
-          }
-          const blob = await zip.generateAsync({ type: "blob" });
-          const a = document.createElement("a");
-          a.href = URL.createObjectURL(blob);
-          a.download = "archive.zip";
-          a.click();
-          return;
-        } else if (window.LocalZip && typeof window.LocalZip.createZipLike === "function") {
-          const items = [];
-          for (let i = 0; i < files.length; i++) {
-            const f = files[i];
-            items.push({ name: f.name, arrayBuffer: await f.arrayBuffer() });
-          }
-          const blob = await window.LocalZip.createZipLike(items);
-          const a = document.createElement("a");
-          a.href = URL.createObjectURL(blob);
-          a.download = "archive.bundle";
-          a.click();
-          return;
-        } else {
-          alert("No zip library available.");
-        }
-      } catch (err) {
-        console.error(err);
-        alert("Failed to create zip: " + (err && err.message ? err.message : err));
-      }
-    };
-
-    window.handleZipExtract = async function () {
-      const f = (unzipFileInput && unzipFileInput.files && unzipFileInput.files[0]) || null;
-      if (!f) return alert("Select a zip file to inspect");
-      if (window.JSZip && typeof JSZip === "function") {
-        const zip = new JSZip();
-        const data = await f.arrayBuffer();
-        const loaded = await zip.loadAsync(data);
-        if (unzipList) {
-          unzipList.innerHTML = "";
-          zip.forEach((relativePath, file) => {
-            const li = document.createElement("li");
-            li.textContent = relativePath + (file.dir ? " (dir)" : "");
-            unzipList.appendChild(li);
-          });
-        } else {
-          // fallback alert
-          const names = [];
-          zip.forEach((p) => names.push(p));
-          alert("Zip contains:\n" + names.join("\n"));
-        }
+    // attach preview
+    imageInput.addEventListener("change", function (e) {
+      const f = e.target.files && e.target.files[0];
+      if (!f) { imagePreview.src = ""; setVisible(imagePreview, false); return; }
+      if (f.type && f.type.startsWith("image/")) {
+        const r = new FileReader();
+        r.onload = function (ev) { imagePreview.src = ev.target.result; setVisible(imagePreview, true); };
+        r.readAsDataURL(f);
       } else {
-        alert("Unzip requires JSZip (include /libs/jszip.min.js or CDN).");
+        imagePreview.src = ""; setVisible(imagePreview, false);
       }
-    };
+    });
 
-    if (zipCreateBtn) on(zipCreateBtn, "click", window.handleZipCreate);
-    if (unzipBtn) on(unzipBtn, "click", window.handleZipExtract);
-  })();
+    // apply button: create edited image and replace preview
+    etApply.addEventListener("click", async function () {
+      const f = (imageInput && imageInput.files && imageInput.files[0]) || null;
+      if (!f) return alert("Select an image first.");
+      try {
+        const data = await applyEditsAndReturnDataURL(f, {
+          text: etText.value || "",
+          textColor: etTextColor.value || "#ffffff",
+          fontSize: etFontSize.value || 28,
+          brightness: etBrightness.value || 0,
+          overlayColor: etOverlayColor.value || "#000000",
+          overlayOpacity: etOverlayOpacity.value || 0,
+          mime: (imageFormatSelect && imageFormatSelect.value) || "image/png"
+        });
+        imagePreview.src = data;
+        setVisible(imagePreview, true);
+      } catch (err) {
+        console.error(err);
+        alert("Failed to apply edits: " + (err && err.message ? err.message : err));
+      }
+    });
 
-  /* -----------------------
-     Image Converter & Thumbnail generator
-     ----------------------- */
-  (function imageToolsInit() {
-    const imageInput = $("imageInput") || $("ic-file") || $("fileInput");
-    const imagePreview = $("imagePreview") || $("ic-output") || $("preview");
-    const thumbInput = $("thumbInput") || $("ic-file") || $("thumbInput");
-    const thumbPreview = $("thumbPreview") || $("thumbPreview") || $("ic-output");
-    const imageDownloadBtn = $("imageDownloadBtn") || $("downloadBtn") || $("ic-download");
-    const thumbDownloadBtn = $("thumbDownloadBtn") || $("downloadThumbBtn") || null;
-    const thumbSizeInput = $("ic-thumb-size") || $("thumbSize") || null;
-    const imageFormatSelect = $("ic-format") || $("imageFormat") || null;
+    // reset editor to original preview
+    etReset.addEventListener("click", function () {
+      const f = (imageInput && imageInput.files && imageInput.files[0]) || null;
+      if (!f) return;
+      const r = new FileReader();
+      r.onload = function (ev) { imagePreview.src = ev.target.result; setVisible(imagePreview, true); };
+      r.readAsDataURL(f);
+    });
 
-    // generic preview handler
-    function attachPreview(fileInput, previewEl) {
-      if (!fileInput || !previewEl) return;
-      fileInput.addEventListener("change", function (e) {
-        const f = e.target.files && e.target.files[0];
-        if (!f) {
-          previewEl.src = "";
-          setVisible(previewEl, false);
-          return;
-        }
-        if (f.type && f.type.startsWith("image/")) {
-          const reader = new FileReader();
-          reader.onload = function (ev) {
-            previewEl.src = ev.target.result;
-            setVisible(previewEl, true);
-          };
-          reader.readAsDataURL(f);
-        } else {
-          previewEl.src = "";
-          setVisible(previewEl, false);
-        }
-      });
-    }
-
-    attachPreview(imageInput, imagePreview);
-    attachPreview(thumbInput, thumbPreview);
-
-    function downloadCanvasImage(canvas, filename, mime) {
-      const a = document.createElement("a");
-      a.href = canvas.toDataURL(mime || "image/png");
-      a.download = filename || "image.png";
-      a.click();
-    }
-
-    function convertAndDownloadImage(file, options = {}) {
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        const reader = new FileReader();
-        reader.onload = function (ev) {
-          img.onload = function () {
-            try {
-              // compute size
-              let w = img.width, h = img.height;
-              if (options.maxSize) {
-                const max = options.maxSize;
-                if (w > h) {
-                  h = Math.round((h * max) / w);
-                  w = max;
-                } else {
-                  w = Math.round((w * max) / h);
-                  h = max;
-                }
-              }
-              const canvas = document.createElement("canvas");
-              canvas.width = w;
-              canvas.height = h;
-              const ctx = canvas.getContext("2d");
-              ctx.drawImage(img, 0, 0, w, h);
-              const mime = options.mime || "image/png";
-              const filename = options.filename || "converted.png";
-              downloadCanvasImage(canvas, filename, mime);
-              resolve();
-            } catch (err) { reject(err); }
-          };
-          img.onerror = reject;
-          img.src = ev.target.result;
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    }
-
-    if (imageDownloadBtn) {
-      imageDownloadBtn.addEventListener("click", function () {
+    // download button (applies edits if any)
+    if (downloadBtn) {
+      downloadBtn.addEventListener("click", async function () {
         const f = (imageInput && imageInput.files && imageInput.files[0]) || null;
         if (!f) return alert("Select an image first.");
-        const fmt = (imageFormatSelect && imageFormatSelect.value) || "image/png";
-        convertAndDownloadImage(f, { mime: fmt, filename: "converted." + fmt.split("/")[1] }).catch((e) => {
-          console.error(e);
-          alert("Convert failed: " + e.message);
-        });
+        try {
+          const data = await applyEditsAndReturnDataURL(f, {
+            text: etText.value || "",
+            textColor: etTextColor.value || "#fff",
+            fontSize: etFontSize.value || 28,
+            brightness: etBrightness.value || 0,
+            overlayColor: etOverlayColor.value || "#000",
+            overlayOpacity: etOverlayOpacity.value || 0,
+            mime: (imageFormatSelect && imageFormatSelect.value) || "image/png"
+          });
+          // convert dataURL to blob
+          const res = await fetch(data);
+          const blob = await res.blob();
+          const ext = ((imageFormatSelect && imageFormatSelect.value) || "image/png").split("/")[1] || "png";
+          downloadBlob(blob, "image-edited." + ext);
+        } catch (err) {
+          console.error(err);
+          alert("Download failed: " + (err && err.message ? err.message : err));
+        }
       });
     }
 
+    // thumbnail download
     if (thumbDownloadBtn) {
-      thumbDownloadBtn.addEventListener("click", function () {
-        const f = (thumbInput && thumbInput.files && thumbInput.files[0]) || null;
+      thumbDownloadBtn.addEventListener("click", async function () {
+        const f = (imageInput && imageInput.files && imageInput.files[0]) || null;
         if (!f) return alert("Select an image first.");
         const maxSize = thumbSizeInput ? parseInt(thumbSizeInput.value || 200, 10) : 200;
-        convertAndDownloadImage(f, { maxSize: maxSize, mime: "image/png", filename: "thumbnail.png" }).catch((e) => {
-          console.error(e);
-          alert("Thumbnail failed: " + e.message);
-        });
+        try {
+          const dataURL = await applyEditsAndReturnDataURL(f, { maxSize: maxSize, mime: "image/png" });
+          const res = await fetch(dataURL);
+          const blob = await res.blob();
+          downloadBlob(blob, "thumbnail.png");
+        } catch (err) {
+          console.error(err);
+          alert("Thumbnail creation failed: " + (err && err.message ? err.message : err));
+        }
       });
     }
   })();
 
-  /* -----------------------
-     Final safety: expose functions preserved previously
-     ----------------------- */
-  // Expose names used by legacy HTML inline calls
-  window.handleZipCreate = window.handleZipCreate || window.handleZipCreate;
-  window.handleZipExtract = window.handleZipExtract || window.handleZipExtract;
-  window.handleImageConvert = window.handleImageConvert || window.handleImageConvert;
-  window.handleTextDownload = window.handleTextDownload || window.handleTextDownload;
-  window.speakText = window.speakText || window.speakText;
-  window.updateWordCounter = window.updateWordCounter || window.updateWordCounter;
-  window.convertCase = window.convertCase || window.convertCase;
+  /* =========================
+     Expose legacy function names for HTML inline compatibility
+     (these will reference functions defined above if present)
+     ========================= */
+  window.updateWordCounter = window.updateWordCounter || function () { };
+  window.convertCase = window.convertCase || function () { };
+  window.speakText = window.speakText || function () { };
+  window.handleImageConvert = window.handleImageConvert || function () { };
+  window.handleTextDownload = window.handleTextDownload || function () { };
+  window.handleZipCreate = window.handleZipCreate || function () { };
+  window.handleZipExtract = window.handleZipExtract || function () { };
 
-  // small initialization sweep in case page was already loaded before script replacement
-  if (document.readyState === "interactive" || document.readyState === "complete") {
-    // run word counter once if present
-    try { window.updateWordCounter && window.updateWordCounter(); } catch (e) {}
+  // call updateWordCounter once DOM loaded (to seed counters)
+  if (document.readyState === "complete" || document.readyState === "interactive") {
+    try { window.updateWordCounter(); } catch (e) { /* ignore */ }
   } else {
-    document.addEventListener("DOMContentLoaded", function () {
-      try { window.updateWordCounter && window.updateWordCounter(); } catch (e) {}
-    });
+    document.addEventListener("DOMContentLoaded", function () { try { window.updateWordCounter(); } catch (e) { } });
   }
 })();
-      
