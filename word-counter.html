@@ -31,7 +31,24 @@
     <li><a href="blog.html">Blog</a></li>
     <li><a href="contact.html">Contact</a></li>
   </ul>
-</nav><main class='container'><article class='card'><h1>Word Counter</h1><p class='muted'>Count words & characters instantly.</p><textarea id='wc-input' rows='8' style='width:100%' oninput='updateWordCounter()'></textarea><p id='wc-output' class='muted'>0 words — 0 characters</p></article></main><footer id="site-footer" class="site-footer" role="contentinfo">
+</nav>
+  <main class='container'>
+    <article class='card'>
+      <h1>Word Counter</h1>
+      <p class='muted'>Count words & characters instantly.</p>
+      <textarea id='wc-input' rows='8' style='width:100%' oninput='updateWordCounter()'>
+      </textarea>
+      <p id='wc-output' class='muted'>0 words — 0 characters</p>
+    </article>
+<section id="word-counter">
+  <h2>Word Counter</h2>
+  <textarea id="wc-input" placeholder="Type or paste your text here..." oninput="updateWordCounter()"></textarea>
+  <p id="wc-output">0 words — 0 characters</p>
+</section>
+
+    
+  </main>
+  <footer id="site-footer" class="site-footer" role="contentinfo">
   <div class="container footer-inner">
     <div class="footer-left">
       <strong>EverToolbox</strong><br><small class="muted">© 2025 EverToolbox. All rights reserved.</small>
