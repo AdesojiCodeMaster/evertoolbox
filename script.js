@@ -128,11 +128,14 @@ async function speakTextWithSelectedLang() {
   if (out) out.innerHTML = '<em>Generating audio…</em>';
 
   try {
-    const resp = await _fetchTimeout(`${API_BASE}/api/tts`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, lang })
-    }, 30000);
+    const resp = await fetch(`${API_BASE}/api/tts`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    text,
+    lang: sel.value || "en"   // 👈 send the selected language
+  })
+}, 30000);
 
     if (!resp.ok) {
       // try to read JSON error
