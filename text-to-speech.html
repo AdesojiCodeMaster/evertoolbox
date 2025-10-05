@@ -33,7 +33,8 @@
   </ul>
 </nav>
   <main class='container'>
-  <!--  <article class='card'>
+  
+    <article class='card'>
       <h1>Text-to-Speech</h1>
       <textarea id='tts-input' data-demo='Hello — welcome to EverToolbox demo.' rows='6' style='width:100%'>
         Hello — welcome to EverToolbox demo.</textarea>
@@ -41,22 +42,16 @@
         <select id='tts-voices' aria-label='Voices'>
           
         </select> 
-        <button class='btn' onclick='speakText()'>
+        <button class='btn' id = "tts-speak" onclick='speakText()'>
           Play
         </button>
-        <button class='btn' onclick='speakText(true)'>
+        <button class='btn' id= "tts-speak" onclick='speakText(true)'>
           Play Demo
         </button>
+    <div id="tts-output"></div>
       </p>
-    </article>-->
-    <textarea id="tts-input" placeholder="Enter text..."></textarea>
-<select id="tts-voices">
-  <option value="en">English</option>
-  <option value="fr">French</option>
-  <option value="es">Spanish</option>
-</select>
-<button id="tts-speak">Speak</button>
-<div id="tts-output"></div>
+    </article>
+    
   
   </main>
   <footer id="site-footer" class="site-footer" role="contentinfo">
