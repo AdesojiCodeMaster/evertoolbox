@@ -40,45 +40,17 @@
         Hello — welcome to EverToolbox demo.</textarea>
       <p>
         <select id='tts-voices' aria-label='Voices'>
-          
+          <option value="en">English</option>
+          <option value="fr">French</option>
+         <option value="es">Spanish</option>
+        <option value="de">German</option>
         </select> 
         <button class='btn' id = "tts-speak" onclick='speakText()'>
           Play
         </button>
-        <button class='btn' id= "tts-speak" onclick='speakText(true)'>
-          Play Demo
-        </button>
-    <div id="tts-output"></div>
+       <div id="tts-output"></div>
       </p>
-    </article>
-
-    <!-- =========================
-     Text-to-Speech Tool
-========================= -->
-<section id="tts-tool">
-  <h2>Text to Speech</h2>
-  
-  <!-- Input text -->
-  <textarea id="tts-input" placeholder="Enter text here..." rows="4"></textarea>
-  
-  <!-- Voice selector -->
-  <label for="tts-voices">Choose language/voice:</label>
-  <select id="tts-voices">
-    <option value="en">English</option>
-    <option value="fr">French</option>
-    <option value="es">Spanish</option>
-    <option value="de">German</option>
-  </select>
-  
-  <!-- Action button -->
-  <button id="tts-speak">Speak</button>
-  
-  <!-- Output area for download link -->
-  <div id="tts-output"></div>
-</section>
-    
-    
-  
+    </article>  
   </main>
   <footer id="site-footer" class="site-footer" role="contentinfo">
   <div class="container footer-inner">
