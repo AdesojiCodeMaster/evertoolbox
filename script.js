@@ -86,9 +86,8 @@ window.convertCase = window.convertCase || function(mode){
   if (out && (out.tagName==='TEXTAREA' || out.tagName==='INPUT')) out.value=v; else ta.value=v;
 };
 
-
 /* =========================
-   Text-to-Speech (with backend + language support)
+   Text-to-speech (play locally + backend download)
    ========================= */
 /* =========================
    TTS: send selected language to backend (POST /api/tts)
@@ -209,7 +208,29 @@ async function speakTextWithSelectedLang() {
   const btn = document.getElementById('tts-speak') || document.getElementById('tts-run') || document.getElementById('tts-play') || document.getElementById('tts-download');
   if (btn) btn.addEventListener('click', (ev) => { ev.preventDefault(); speakTextWithSelectedLang(); });
 })();
-           
+     
+
+/* =========================
+   SEO Analyzer (already wired to backend)
+   ========================= */
+(function seoInit(){
+  const run = $('seo-run') || $('analyzeBtn'), urlInput = $('seo-url'), out = $('seo-output');
+  if (!run || !urlInput || !out) return;
+  on(run,'click', async ()=>{
+    const url = urlInput.value.trim(); if (!url) return alert('Enter a URL to analyze.');
+    out.innerHTML = 'Analyzing…';
+    try {
+      const resp = await fetchWithTimeout(`${API_BASE}/api/seo-analyze?url=${encodeURIComponent(url)}`, {}, 20000);
+      if (!resp.ok) { const j = await safeJSON(resp); throw new Error((j&&j.error) ? j.error : `Server returned ${resp.status}`); }
+      const data = await resp.json();
+      let html = `<h4>SEO Report for ${url}</h4>`;
+      html += `<p><strong>Title:</strong> ${data.title||'—'} (${(data.title||'').length} chars)</p>`;
+      html += `<p><strong>Meta description:</strong> ${data.description||'—'} (${(data.description||'').length} chars)</p>`;
+      if (data.issues && data.issues.length) html += `<h5>Issues</h5><ul>${data.issues.map(i=>' <li>'+i+'</li>').join('')}</ul>`;
+      out.innerHTML = html;
+    } catch(err) { console.error('SEO error',err); out.innerHTML = `<p style="color:red">SEO analysis failed: ${err.message||err}</p>`; }
+  });
+})();
 
 /* =========================================================================
    FILE CONVERTER (text editing + image editing before download or server convert)
@@ -218,7 +239,7 @@ async function speakTextWithSelectedLang() {
 (function fileConverterInit(){
   // Support multiple ID variants to match user's html
   const fileInput = $('fc-file') || $('fc-file-input') || $('fc-filepicker') || $('ic-file') || $('fileInput') || $('file-input');
-  const textArea = $('fc-text') || $('fc-textarea') || $('file-text'); to 
+  const textArea = $('fc-text') || $('fc-textarea') || $('file-text');
   const nameInput = $('fc-name') || $('file-name');
   const formatSel = $('fc-format') || $('fc-format-select') || $('ic-format') || $('file-format');
   const convertBtn = $('fc-run') || $('fc-convert') || $('convertBtn') || $('fc-run-btn') || $('fc-run-btn');
