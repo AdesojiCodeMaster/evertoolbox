@@ -90,70 +90,73 @@ window.convertCase = window.convertCase || function(mode){
    Text-to-speech (play locally + backend download)
    ========================= */
 /* =========================
-   TTS: backend POST + fallback
-   Expects server route: POST /api/tts  (JSON { text, lang })
+   TTS: send selected language to backend (POST /api/tts)
+   - Uses API_BASE from your main script
+   - Expects backend route: POST /api/tts { text, lang }
    ========================= */
-async function speakTextViaServer() {
+async function speakTextWithSelectedLang() {
   const ta = document.getElementById('tts-input');
   const sel = document.getElementById('tts-voices');
   const out = document.getElementById('tts-output');
 
-  if (!ta) return alert('Text input #tts-input not found in HTML.');
+  if (!ta) return alert('TTS input (#tts-input) not found.');
   const text = (ta.value || '').trim();
-  if (!text) return alert('Please enter text to convert to speech.');
+  if (!text) return alert('Enter text to speak.');
 
   const lang = sel ? (sel.value || sel.options[sel.selectedIndex]?.value || 'en') : 'en';
 
-  // Safe defaults if helper exists
-  const fetchTimeout = typeof fetchWithTimeout === 'function' ? fetchWithTimeout : async (u, o = {}, t = 20000) => {
-    const controller = new AbortController();
-    const id = setTimeout(()=>controller.abort(), t);
-    try { const r = await fetch(u, { ...o, signal: controller.signal }); clearTimeout(id); return r; }
-    catch(e){ clearTimeout(id); throw e; }
-  };
-  const blobDownloader = typeof downloadBlob === 'function' ? downloadBlob : (b, name) => {
-    const a = document.createElement('a');
-    const url = URL.createObjectURL(b);
-    a.href = url; a.download = name || 'speech.mp3';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url),2000);
-  };
+  // helpers fallback if missing in your script.js
+  const _fetchTimeout = (typeof fetchWithTimeout === 'function')
+    ? fetchWithTimeout
+    : async (u, o = {}, t = 20000) => {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), t);
+        try { const r = await fetch(u, {...o, signal: controller.signal}); clearTimeout(id); return r; }
+        catch(e){ clearTimeout(id); throw e; }
+      };
 
-  // show status
+  const _downloadBlob = (typeof downloadBlob === 'function')
+    ? downloadBlob
+    : (b, name) => {
+        const a = document.createElement('a');
+        const url = URL.createObjectURL(b);
+        a.href = url; a.download = name || 'speech.mp3';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(()=>URL.revokeObjectURL(url), 2000);
+      };
+
   if (out) out.innerHTML = '<em>Generating audio…</em>';
 
   try {
-    const resp = await fetchTimeout(`${API_BASE}/api/tts`, {
+    const resp = await _fetchTimeout(`${API_BASE}/api/tts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, lang })
-    }, 25000);
+    }, 30000);
 
     if (!resp.ok) {
-      // try to parse JSON error
+      // try to read JSON error
       let errMsg = `Server returned ${resp.status}`;
-      try { const j = await resp.json(); if (j && j.error) errMsg = j.error; } catch(e) {}
+      try { const j = await resp.json(); if (j && j.error) errMsg = j.error; } catch(e){}
       throw new Error(errMsg);
     }
 
-    // ensure response looks like audio
     const ctype = resp.headers.get('content-type') || '';
     if (!/audio|mpeg|ogg|wav|octet/i.test(ctype)) {
-      // maybe server returned json error
+      // server may have returned JSON with an error
       const j = await resp.json().catch(()=>null);
-      const em = (j && j.error) ? j.error : `Unexpected response content-type: ${ctype}`;
+      const em = (j && j.error) ? j.error : `Unexpected content-type: ${ctype}`;
       throw new Error(em);
     }
 
     const blob = await resp.blob();
     const url = URL.createObjectURL(blob);
 
-    // create audio player + download link
+    // Build player + download link
     const audio = document.createElement('audio');
     audio.controls = true;
     audio.src = url;
-    try { audio.play().catch(()=>{}); } catch(e){}
-
+    audio.autoplay = true;
     const dl = document.createElement('a');
     dl.href = url;
     dl.download = 'speech.mp3';
@@ -161,58 +164,51 @@ async function speakTextViaServer() {
     dl.style.display = 'inline-block';
     dl.style.marginLeft = '10px';
 
-    if (out) {
-      out.innerHTML = '';
-      out.appendChild(audio);
-      out.appendChild(dl);
-    } else {
-      // if no designated output container, append to body (non-ideal but safe)
-      document.body.appendChild(audio);
-      document.body.appendChild(dl);
-    }
+    if (out) { out.innerHTML = ''; out.appendChild(audio); out.appendChild(dl); }
+    else { document.body.appendChild(audio); document.body.appendChild(dl); }
 
-    // optional: revoke URL after some time when user likely downloaded/played
-    setTimeout(()=>URL.revokeObjectURL(url), 60 * 1000);
+    // Revoke later (give user time to download/play)
+    setTimeout(()=>URL.revokeObjectURL(url), 60_000);
 
   } catch (err) {
     console.error('TTS server error:', err);
-    // show error
     if (out) out.innerHTML = `<p style="color:red">TTS failed: ${err.message}</p>`;
 
-    // fallback to local speechSynthesis if available
+    // Fallback: ask user if they want local speechSynthesis in their browser
     if ('speechSynthesis' in window) {
-      const useLocal = confirm(`TTS server failed: ${err.message}\n\nUse local browser speech (no download) instead?`);
-      if (useLocal) {
-        try {
-          const utter = new SpeechSynthesisUtterance(text);
-          const voices = speechSynthesis.getVoices();
-          // try to pick a voice with same lang if present
-          if (voices && voices.length) {
-            const match = voices.find(v => (v.lang && v.lang.toLowerCase().startsWith((sel?.value||'en').toLowerCase().split('-')[0])));
-            if (match) utter.voice = match;
-          }
-          speechSynthesis.cancel();
-          speechSynthesis.speak(utter);
-          if (out) {
-            out.innerHTML = '<p>Playing locally via browser speech synthesis (not downloadable).</p>';
-          }
-        } catch (e) {
-          console.error('Local TTS failed', e);
-          alert('Local TTS failed: ' + (e.message || e));
+      const useLocal = confirm(`TTS server failed: ${err.message}\n\nUse local browser speech (no downloadable file) as fallback?`);
+      if (!useLocal) return;
+      try {
+        const utter = new SpeechSynthesisUtterance(text);
+
+        // Try pick a voice that best matches requested language
+        const voices = speechSynthesis.getVoices();
+        if (voices && voices.length) {
+          // match by prefix (e.g., 'en' should match 'en-US' voices)
+          const prefix = (lang || 'en').toLowerCase().split('-')[0];
+          const match = voices.find(v => v.lang && v.lang.toLowerCase().startsWith(prefix));
+          if (match) utter.voice = match;
         }
+
+        speechSynthesis.cancel();
+        speechSynthesis.speak(utter);
+        if (out) out.innerHTML = '<p>Playing locally via browser speech (not downloadable).</p>';
+      } catch (e) {
+        console.error('Local speech failed', e);
+        alert('Both server TTS and local speech failed: ' + (e.message || e));
       }
     } else {
-      alert('TTS failed and no local speechSynthesis fallback available.');
+      alert('TTS failed and browser does not support speechSynthesis.');
     }
   }
 }
 
-// Attach to button(s) defensively
-(function attachTTSButtons(){
+// attach to button(s)
+(function attachTTS() {
   const btn = document.getElementById('tts-speak') || document.getElementById('tts-run') || document.getElementById('tts-play') || document.getElementById('tts-download');
-  if (btn) btn.addEventListener('click', (e) => { e.preventDefault(); speakTextViaServer(); });
+  if (btn) btn.addEventListener('click', (ev) => { ev.preventDefault(); speakTextWithSelectedLang(); });
 })();
-   
+     
 
 /* =========================
    SEO Analyzer (already wired to backend)
