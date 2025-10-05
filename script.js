@@ -89,42 +89,130 @@ window.convertCase = window.convertCase || function(mode){
 /* =========================
    Text-to-speech (play locally + backend download)
    ========================= */
-(function ttsInit(){
-  const ta = $('tts-input'), sel = $('tts-voices'), playBtn = $('tts-play'), downloadBtn = $('tts-download'), out = $('tts-output') || null;
-  if (!ta) return;
-  // populate voices (best-effort)
-  function populate(){
-    if (!sel || !window.speechSynthesis) return;
-    const vs = speechSynthesis.getVoices();
-    sel.innerHTML = '';
-    vs.forEach((v,i)=>{ const o=document.createElement('option'); o.value=v.lang||v.name||i; o.textContent=`${v.name} (${v.lang})${v.default?' — default':''}`; sel.appendChild(o); });
-  }
-  populate(); if (speechSynthesis) speechSynthesis.onvoiceschanged = populate;
-  async function speakLocal(){
-    const text = ta.value.trim(); if (!text) return alert('Enter text to speak.');
-    if (!window.speechSynthesis) return alert('SpeechSynthesis not supported in this browser.');
-    const u = new SpeechSynthesisUtterance(text);
-    const voices = speechSynthesis.getVoices(); const idx = sel ? parseInt(sel.value||'0',10) : 0;
-    if (voices && voices[idx]) u.voice = voices[idx];
-    try { speechSynthesis.cancel(); } catch(e){}
-    speechSynthesis.speak(u);
-  }
-  async function downloadViaBackend(){
-    const text = ta.value.trim(); if (!text) return alert('Enter text to convert.');
-    try {
-      const resp = await fetchWithTimeout(`${API_BASE}/api/tts`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text, lang: (sel ? sel.value : 'en') }) }, 20000);
-      if (!resp.ok) throw new Error('TTS generation failed (server)');
-      const blob = await resp.blob();
-      downloadBlob(blob, 'speech.mp3');
-    } catch(err) {
-      console.error('TTS backend error', err);
-      alert('TTS download failed. Will attempt local playback.');
-      speakLocal();
+/* =========================
+   TTS: backend POST + fallback
+   Expects server route: POST /api/tts  (JSON { text, lang })
+   ========================= */
+async function speakTextViaServer() {
+  const ta = document.getElementById('tts-input');
+  const sel = document.getElementById('tts-voices');
+  const out = document.getElementById('tts-output');
+
+  if (!ta) return alert('Text input #tts-input not found in HTML.');
+  const text = (ta.value || '').trim();
+  if (!text) return alert('Please enter text to convert to speech.');
+
+  const lang = sel ? (sel.value || sel.options[sel.selectedIndex]?.value || 'en') : 'en';
+
+  // Safe defaults if helper exists
+  const fetchTimeout = typeof fetchWithTimeout === 'function' ? fetchWithTimeout : async (u, o = {}, t = 20000) => {
+    const controller = new AbortController();
+    const id = setTimeout(()=>controller.abort(), t);
+    try { const r = await fetch(u, { ...o, signal: controller.signal }); clearTimeout(id); return r; }
+    catch(e){ clearTimeout(id); throw e; }
+  };
+  const blobDownloader = typeof downloadBlob === 'function' ? downloadBlob : (b, name) => {
+    const a = document.createElement('a');
+    const url = URL.createObjectURL(b);
+    a.href = url; a.download = name || 'speech.mp3';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+  };
+
+  // show status
+  if (out) out.innerHTML = '<em>Generating audio…</em>';
+
+  try {
+    const resp = await fetchTimeout(`${API_BASE}/api/tts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, lang })
+    }, 25000);
+
+    if (!resp.ok) {
+      // try to parse JSON error
+      let errMsg = `Server returned ${resp.status}`;
+      try { const j = await resp.json(); if (j && j.error) errMsg = j.error; } catch(e) {}
+      throw new Error(errMsg);
+    }
+
+    // ensure response looks like audio
+    const ctype = resp.headers.get('content-type') || '';
+    if (!/audio|mpeg|ogg|wav|octet/i.test(ctype)) {
+      // maybe server returned json error
+      const j = await resp.json().catch(()=>null);
+      const em = (j && j.error) ? j.error : `Unexpected response content-type: ${ctype}`;
+      throw new Error(em);
+    }
+
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+
+    // create audio player + download link
+    const audio = document.createElement('audio');
+    audio.controls = true;
+    audio.src = url;
+    try { audio.play().catch(()=>{}); } catch(e){}
+
+    const dl = document.createElement('a');
+    dl.href = url;
+    dl.download = 'speech.mp3';
+    dl.textContent = 'Download MP3';
+    dl.style.display = 'inline-block';
+    dl.style.marginLeft = '10px';
+
+    if (out) {
+      out.innerHTML = '';
+      out.appendChild(audio);
+      out.appendChild(dl);
+    } else {
+      // if no designated output container, append to body (non-ideal but safe)
+      document.body.appendChild(audio);
+      document.body.appendChild(dl);
+    }
+
+    // optional: revoke URL after some time when user likely downloaded/played
+    setTimeout(()=>URL.revokeObjectURL(url), 60 * 1000);
+
+  } catch (err) {
+    console.error('TTS server error:', err);
+    // show error
+    if (out) out.innerHTML = `<p style="color:red">TTS failed: ${err.message}</p>`;
+
+    // fallback to local speechSynthesis if available
+    if ('speechSynthesis' in window) {
+      const useLocal = confirm(`TTS server failed: ${err.message}\n\nUse local browser speech (no download) instead?`);
+      if (useLocal) {
+        try {
+          const utter = new SpeechSynthesisUtterance(text);
+          const voices = speechSynthesis.getVoices();
+          // try to pick a voice with same lang if present
+          if (voices && voices.length) {
+            const match = voices.find(v => (v.lang && v.lang.toLowerCase().startsWith((sel?.value||'en').toLowerCase().split('-')[0])));
+            if (match) utter.voice = match;
+          }
+          speechSynthesis.cancel();
+          speechSynthesis.speak(utter);
+          if (out) {
+            out.innerHTML = '<p>Playing locally via browser speech synthesis (not downloadable).</p>';
+          }
+        } catch (e) {
+          console.error('Local TTS failed', e);
+          alert('Local TTS failed: ' + (e.message || e));
+        }
+      }
+    } else {
+      alert('TTS failed and no local speechSynthesis fallback available.');
     }
   }
-  on(playBtn,'click', speakLocal);
-  on(downloadBtn,'click', downloadViaBackend);
+}
+
+// Attach to button(s) defensively
+(function attachTTSButtons(){
+  const btn = document.getElementById('tts-speak') || document.getElementById('tts-run') || document.getElementById('tts-play') || document.getElementById('tts-download');
+  if (btn) btn.addEventListener('click', (e) => { e.preventDefault(); speakTextViaServer(); });
 })();
+   
 
 /* =========================
    SEO Analyzer (already wired to backend)
