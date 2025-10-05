@@ -1,778 +1,599 @@
-/* =============================================================================
-   EverToolbox - Unified hybrid script.js
-   - Keeps frontend-only features (fast, offline)
-   - Uses backend for professional conversions when available (API_BASE)
-   - Defensive: attaches handlers only if elements exist
-   - Preserves theme, mobile menu, case converter behavior
-   ============================================================================= */
+/* ===========================================================================
+   EverToolbox - Final script.js (with in-browser edit-before-download)
+   Hybrid: client-side edits + optional backend conversion
+   Backend base:
+   const API_BASE = 'https://evertoolbox-backend.onrender.com'
+   =========================================================================== */
 
-/* =========================
-   Configuration
-   ========================= */
-const API_BASE = "https://evertoolbox-backend.onrender.com"; // <-- your backend
-const BACKEND_TIMEOUT_MS = 10000; // timeout for backend requests
+const API_BASE = "https://evertoolbox-backend.onrender.com";
+const BACKEND_TIMEOUT_MS = 20000;
 
-/* =========================
-   Small helpers
-   ========================= */
-const $ = (id) => document.getElementById(id);
+const $ = id => document.getElementById(id);
 const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
-const exists = (v) => !!v;
+const safeJSON = async (r) => { try { return await r.json() } catch(e){ return null } };
+const fetchWithTimeout = async (url, opts={}, t=BACKEND_TIMEOUT_MS) => {
+  const controller = new AbortController();
+  const id = setTimeout(()=>controller.abort(), t);
+  try { const res = await fetch(url, {...opts, signal: controller.signal}); clearTimeout(id); return res; }
+  catch(e){ clearTimeout(id); throw e; }
+};
 const downloadBlob = (blob, filename) => {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = filename || "download";
+  const a = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  a.href = url; a.download = filename || 'download';
   document.body.appendChild(a);
   a.click();
   a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-};
-const safeJSON = async (res) => {
-  try { return await res.json(); } catch (e) { return null; }
-};
-const fetchWithTimeout = async (url, opts = {}, timeout = BACKEND_TIMEOUT_MS) => {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-  try {
-    const r = await fetch(url, { ...opts, signal: controller.signal });
-    clearTimeout(id);
-    return r;
-  } catch (err) {
-    clearTimeout(id);
-    throw err;
-  }
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
 };
 
 /* =========================
-   Theme / Mobile menu / Smooth scroll
+   UI: theme, mobile menu, smooth scroll
    ========================= */
-(function uiInit() {
-  // initial theme set
-  const stored = localStorage.getItem("theme");
-  if (stored) {
-    if (stored === "dark") document.documentElement.setAttribute("data-theme", "dark");
-    else document.documentElement.removeAttribute("data-theme");
-  } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
-    document.documentElement.setAttribute("data-theme", "dark");
-  }
-
-  document.addEventListener("DOMContentLoaded", () => {
-    // theme toggle
-    const themeBtn = $("theme-toggle");
-    if (themeBtn) {
-      themeBtn.addEventListener("click", () => {
-        const now = document.documentElement.getAttribute("data-theme") === "dark" ? "" : "dark";
-        if (now === "dark") document.documentElement.setAttribute("data-theme", "dark");
-        else document.documentElement.removeAttribute("data-theme");
-        localStorage.setItem("theme", now === "dark" ? "dark" : "light");
-      });
-    }
-
-    // mobile menu
-    const menuBtn = $("mobile-menu-btn");
-    const mobileMenu = $("mobile-menu");
+(function uiInit(){
+  document.documentElement.setAttribute('data-theme', localStorage.getItem('theme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light'));
+  document.addEventListener('DOMContentLoaded', () => {
+    const themeBtn = $('theme-toggle');
+    if (themeBtn) themeBtn.addEventListener('click', () => {
+      const now = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      if (now === 'dark') document.documentElement.setAttribute('data-theme','dark'); else document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('theme', now === 'dark' ? 'dark' : 'light');
+    });
+    const menuBtn = $('mobile-menu-btn'), mobileMenu = $('mobile-menu');
     if (menuBtn && mobileMenu) {
-      menuBtn.addEventListener("click", () => {
-        const isOpen = mobileMenu.classList.toggle("open");
-        menuBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
-        mobileMenu.setAttribute("aria-hidden", isOpen ? "false" : "true");
+      menuBtn.addEventListener('click', () => {
+        const open = mobileMenu.classList.toggle('open');
+        menuBtn.setAttribute('aria-expanded', open ? 'true':'false');
+        mobileMenu.setAttribute('aria-hidden', open ? 'false':'true');
       });
-      mobileMenu.querySelectorAll && mobileMenu.querySelectorAll("a").forEach(a => {
-        a.addEventListener("click", () => {
-          mobileMenu.classList.remove("open");
-          menuBtn.setAttribute("aria-expanded", "false");
-        });
-      });
+      mobileMenu.querySelectorAll && mobileMenu.querySelectorAll('a').forEach(a=>a.addEventListener('click', () => {
+        mobileMenu.classList.remove('open'); menuBtn.setAttribute('aria-expanded','false');
+      }));
     }
-
-    // smooth anchor scroll
-    document.querySelectorAll && document.querySelectorAll('a[href^="#"]').forEach(a => {
-      a.addEventListener("click", (e) => {
-        const id = a.getAttribute("href").slice(1);
-        const el = document.getElementById(id);
-        if (el) {
-          e.preventDefault();
-          el.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      });
-    });
+    document.querySelectorAll && document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click', (e)=>{
+      const id = a.getAttribute('href').slice(1); const el = document.getElementById(id);
+      if (el) { e.preventDefault(); el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    }));
   });
 })();
 
 /* =========================
-   Word Counter
+   Word counter
    ========================= */
-(function wordCounterInit() {
-  const ta = $("wc-input") || $("wordInput");
-  const wordEl = $("wordCount") || $("wc-words");
-  const charEl = $("charCount") || $("wc-chars");
-  const sentenceEl = $("sentenceCount");
-  const paraEl = $("paraCount");
-  const readingEl = $("readingTime");
-  const out = $("wc-output");
-
-  function computeStats(text) {
-    const t = (text || "").trim();
-    const words = t ? t.split(/\s+/).filter(Boolean).length : 0;
-    const chars = (text || "").length;
-    const sentences = t ? t.split(/[.!?]+/).filter(Boolean).length : 0;
-    const paras = t ? t.split(/\n+/).filter(Boolean).length : 0;
-    const reading = Math.max(1, Math.ceil(words / 200));
-    return { words, chars, sentences, paras, reading };
+(function wordCounterInit(){
+  const ta = $('wc-input') || $('wordInput');
+  const out = $('wc-output') || $('wc-output');
+  if (!ta || !out) return;
+  function update(){
+    const text = ta.value || '';
+    const words = text.trim() ? text.trim().split(/\s+/).filter(Boolean).length : 0;
+    const chars = text.length;
+    out.textContent = `${words} words — ${chars} characters`;
   }
-
-  function update() {
-    if (!ta) return;
-    const stats = computeStats(ta.value);
-    if (wordEl) wordEl.textContent = stats.words;
-    if (charEl) charEl.textContent = stats.chars;
-    if (sentenceEl) sentenceEl.textContent = stats.sentences;
-    if (paraEl) paraEl.textContent = stats.paras;
-    if (readingEl) readingEl.textContent = `${stats.reading} min read`;
-    if (out) out.innerText = `${stats.words} words — ${stats.chars} characters`;
-    // add CTA if missing
-    if (out && !document.querySelector(".wc-cta")) {
-      try {
-        const cta = document.createElement("p");
-        cta.className = "wc-cta";
-        cta.innerHTML = `<a class="btn" href="case-converter.html">Try our free Case Converter tool now ✍️</a>`;
-        out.parentElement && out.parentElement.appendChild(cta);
-      } catch (e) {}
-    }
-  }
-
-  if (ta) {
-    ta.addEventListener("input", update);
-    // seed once
-    setTimeout(update, 50);
-  }
+  on(ta, 'input', update); setTimeout(update, 50);
 })();
 
 /* =========================
-   Case Converter (keep unchanged)
+   Case converter (preserve behavior)
    ========================= */
-window.convertCase = function (mode) {
-  const ta = $("case-input") || $("caseInput");
-  const out = $("case-output") || $("caseOutput");
+window.convertCase = window.convertCase || function(mode){
+  const ta = $('case-input') || $('caseInput'), out=$('case-output')||$('caseOutput');
   if (!ta) return;
-  let v = ta.value || "";
-  if (mode === "upper") v = v.toUpperCase();
-  else if (mode === "lower") v = v.toLowerCase();
-  else if (mode === "title") v = v.toLowerCase().replace(/\b(\w)/g, (m, p) => p.toUpperCase());
-  else if (mode === "sentence") v = v.charAt(0).toUpperCase() + v.slice(1).toLowerCase();
-  if (out && (out.tagName === "TEXTAREA" || out.tagName === "INPUT")) out.value = v;
-  else ta.value = v;
+  let v = ta.value || '';
+  if (mode==='upper') v=v.toUpperCase();
+  if (mode==='lower') v=v.toLowerCase();
+  if (mode==='title') v=v.toLowerCase().replace(/\b(\w)/g,(m,p)=>p.toUpperCase());
+  if (out && (out.tagName==='TEXTAREA' || out.tagName==='INPUT')) out.value=v; else ta.value=v;
 };
-// Attach case buttons defensively
-(function attachCaseButtons() {
-  const map = [
-    ["upperBtn", "upper"],
-    ["lowerBtn", "lower"],
-    ["titleBtn", "title"],
-    ["sentenceBtn", "sentence"]
-  ];
-  map.forEach(([id, mode]) => {
-    const el = $(id);
-    if (el) el.addEventListener("click", () => convertCase(mode));
-  });
-})();
 
 /* =========================
-   Text-to-Speech (play in browser) + backend download fallback
+   Text-to-speech (play locally + backend download)
    ========================= */
-(function ttsInit() {
-  const ta = $("tts-input");
-  const sel = $("tts-voices");
-  const playBtn = $("speakBtn") || $("tts-play");
-  const downloadBtn = $("tts-download") || $("tts-download-btn");
-  const audioEl = $("tts-audio") || null;
-
-  const synth = window.speechSynthesis || null;
-
-  function populateVoices() {
-    if (!sel || !synth) return;
-    const voices = synth.getVoices() || [];
-    sel.innerHTML = "";
-    voices.forEach((v, i) => {
-      const o = document.createElement("option");
-      o.value = i;
-      o.textContent = `${v.name} — ${v.lang}${v.default ? " — default" : ""}`;
-      sel.appendChild(o);
-    });
+(function ttsInit(){
+  const ta = $('tts-input'), sel = $('tts-voices'), playBtn = $('tts-play'), downloadBtn = $('tts-download'), out = $('tts-output') || null;
+  if (!ta) return;
+  // populate voices (best-effort)
+  function populate(){
+    if (!sel || !window.speechSynthesis) return;
+    const vs = speechSynthesis.getVoices();
+    sel.innerHTML = '';
+    vs.forEach((v,i)=>{ const o=document.createElement('option'); o.value=v.lang||v.name||i; o.textContent=`${v.name} (${v.lang})${v.default?' — default':''}`; sel.appendChild(o); });
   }
-
-  if (synth) {
-    populateVoices();
-    synth.onvoiceschanged = populateVoices;
-  }
-
-  async function speakLocal() {
-    if (!ta) return alert("No text input found.");
-    const text = ta.value.trim();
-    if (!text) return alert("Enter text to speak.");
+  populate(); if (speechSynthesis) speechSynthesis.onvoiceschanged = populate;
+  async function speakLocal(){
+    const text = ta.value.trim(); if (!text) return alert('Enter text to speak.');
+    if (!window.speechSynthesis) return alert('SpeechSynthesis not supported in this browser.');
     const u = new SpeechSynthesisUtterance(text);
-    const voices = synth ? synth.getVoices() : [];
-    const idx = sel ? parseInt(sel.value || "0", 10) : 0;
+    const voices = speechSynthesis.getVoices(); const idx = sel ? parseInt(sel.value||'0',10) : 0;
     if (voices && voices[idx]) u.voice = voices[idx];
-    try { synth.cancel(); } catch (e) {}
-    synth.speak(u);
-    // if audio element exists show playback (not the TTS stream)
-    if (audioEl) audioEl.src = "";
+    try { speechSynthesis.cancel(); } catch(e){}
+    speechSynthesis.speak(u);
   }
-
-  async function downloadTTSviaBackend() {
-    if (!ta) return alert("No text to convert.");
-    const text = ta.value.trim();
-    if (!text) return alert("Enter text to convert.");
-    // prefer backend: /api/tts (POST JSON {text, lang})
+  async function downloadViaBackend(){
+    const text = ta.value.trim(); if (!text) return alert('Enter text to convert.');
     try {
-      const lang = sel ? (sel.options[sel.selectedIndex]?.getAttribute("data-lang") || sel.options[sel.selectedIndex]?.text || "en") : "en";
-      const resp = await fetchWithTimeout(`${API_BASE}/api/tts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, lang })
-      });
-      if (!resp.ok) throw new Error("TTS service error");
+      const resp = await fetchWithTimeout(`${API_BASE}/api/tts`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ text, lang: (sel ? sel.value : 'en') }) }, 20000);
+      if (!resp.ok) throw new Error('TTS generation failed (server)');
       const blob = await resp.blob();
-      downloadBlob(blob, "speech.mp3");
-    } catch (err) {
-      console.error("TTS backend failed:", err);
-      alert("TTS download failed. Playing locally instead.");
+      downloadBlob(blob, 'speech.mp3');
+    } catch(err) {
+      console.error('TTS backend error', err);
+      alert('TTS download failed. Will attempt local playback.');
       speakLocal();
     }
   }
-
-  if (playBtn) on(playBtn, "click", speakLocal);
-  if (downloadBtn) on(downloadBtn, "click", downloadTTSviaBackend);
+  on(playBtn,'click', speakLocal);
+  on(downloadBtn,'click', downloadViaBackend);
 })();
 
 /* =========================
-   SEO Analyzer (uses backend if available)
+   SEO Analyzer (already wired to backend)
    ========================= */
-(function seoInit() {
-  const runBtn = $("seo-run") || $("analyzeBtn");
-  const urlInput = $("seo-url");
-  const out = $("seo-output");
-
-  async function run() {
-    if (!urlInput || !urlInput.value.trim()) return alert("Enter a URL to analyze.");
-    const url = urlInput.value.trim();
-    if (!out) return;
-    out.innerHTML = "Analyzing…";
+(function seoInit(){
+  const run = $('seo-run') || $('analyzeBtn'), urlInput = $('seo-url'), out = $('seo-output');
+  if (!run || !urlInput || !out) return;
+  on(run,'click', async ()=>{
+    const url = urlInput.value.trim(); if (!url) return alert('Enter a URL to analyze.');
+    out.innerHTML = 'Analyzing…';
     try {
-      const resp = await fetchWithTimeout(`${API_BASE}/api/seo-analyze?url=${encodeURIComponent(url)}`, {}, 15000);
-      if (!resp.ok) {
-        const j = await safeJSON(resp);
-        throw new Error((j && j.error) ? j.error : `Server returned ${resp.status}`);
-      }
+      const resp = await fetchWithTimeout(`${API_BASE}/api/seo-analyze?url=${encodeURIComponent(url)}`, {}, 20000);
+      if (!resp.ok) { const j = await safeJSON(resp); throw new Error((j&&j.error) ? j.error : `Server returned ${resp.status}`); }
       const data = await resp.json();
-      // present a clean report
       let html = `<h4>SEO Report for ${url}</h4>`;
-      html += `<p><strong>Title:</strong> ${data.title || "—" } (${(data.title || "").length} chars)</p>`;
-      html += `<p><strong>Meta description:</strong> ${data.description || "—"} (${(data.description || "").length} chars)</p>`;
-      if (data.issues && data.issues.length) {
-        html += `<h5>Issues</h5><ul>${data.issues.map(i => `<li>${i}</li>`).join("")}</ul>`;
-      }
+      html += `<p><strong>Title:</strong> ${data.title||'—'} (${(data.title||'').length} chars)</p>`;
+      html += `<p><strong>Meta description:</strong> ${data.description||'—'} (${(data.description||'').length} chars)</p>`;
+      if (data.issues && data.issues.length) html += `<h5>Issues</h5><ul>${data.issues.map(i=>' <li>'+i+'</li>').join('')}</ul>`;
       out.innerHTML = html;
-    } catch (err) {
-      console.error("SEO analyze error:", err);
-      out.innerHTML = `<p style="color:red">SEO analysis failed: ${err.message || err}</p>`;
-    }
-  }
-
-  if (runBtn) on(runBtn, "click", run);
+    } catch(err) { console.error('SEO error',err); out.innerHTML = `<p style="color:red">SEO analysis failed: ${err.message||err}</p>`; }
+  });
 })();
 
-/* =========================
-   File Converter (text + image) — hybrid with backend
-   - preview hidden until file chosen
-   - user can tweak text name, image thumbnail size before final download
-   ========================= */
-(function fileConverterInit() {
-  const fileInput = $("ic-file") || $("fileInput");
-  const formatSel = $("ic-format") || $("formatSelect");
-  const thumbSizeEl = $("ic-thumb-size") || $("ic-thumb");
-  const previewImg = $("ic-output") || $("filePreview") || $("fc-output");
-  const textName = $("fc-name");
-  const textArea = $("fc-text");
-  const downloadTextBtn = $("fc-download") || $("fc-download-btn") || null;
-  const convertBtn = $("ic-convert") || $("convertBtn") || $("downloadBtn");
+/* =========================================================================
+   FILE CONVERTER (text editing + image editing before download or server convert)
+   - Supports: text edit (txt->pdf via server), image edit (client-side) + server upload if user chooses server conversion
+   ========================================================================== */
+(function fileConverterInit(){
+  // Support multiple ID variants to match user's html
+  const fileInput = $('fc-file') || $('fc-file-input') || $('fc-filepicker') || $('ic-file') || $('fileInput') || $('file-input');
+  const textArea = $('fc-text') || $('fc-textarea') || $('file-text');
+  const nameInput = $('fc-name') || $('file-name');
+  const formatSel = $('fc-format') || $('fc-format-select') || $('ic-format') || $('file-format');
+  const convertBtn = $('fc-run') || $('fc-convert') || $('convertBtn') || $('fc-run-btn') || $('fc-run-btn');
+  const outputArea = $('fc-output') || $('fc-output-area') || $('file-output');
+  const previewImg = $('fc-output') || $('ic-output') || $('file-preview');
 
-  // hide preview if empty
-  if (previewImg && (!previewImg.getAttribute("src") || previewImg.getAttribute("src") === "")) previewImg.style.display = "none";
-
-  // preview on select
-  if (fileInput && previewImg) {
-    fileInput.addEventListener("change", (e) => {
-      const f = e.target.files && e.target.files[0];
-      if (!f) { previewImg.src = ""; previewImg.style.display = "none"; return; }
-      if (f.type && f.type.startsWith("image/")) {
-        const r = new FileReader();
-        r.onload = (ev) => { previewImg.src = ev.target.result; previewImg.style.display = ""; };
-        r.readAsDataURL(f);
-      } else {
-        // show a generic icon? for non-image we hide preview
-        previewImg.src = ""; previewImg.style.display = "none";
-      }
-    });
-  }
-
-  // text download handler (client-side)
-  window.handleTextDownload = function () {
-    if (!textArea) return alert("Text area not found.");
-    const content = textArea.value || "";
-    const name = (textName && textName.value) ? textName.value : "download.txt";
-    const blob = new Blob([content], { type: "text/plain" });
-    downloadBlob(blob, name);
-  };
-  if (downloadTextBtn) on(downloadTextBtn, "click", window.handleTextDownload);
-
-  // Image conversion client-side (fast) or server-side if advanced requested
-  async function clientImageConvert(file, format, thumb) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      const img = new Image();
-      reader.onload = function (e) {
-        img.onload = function () {
-          try {
-            let w = img.width, h = img.height;
-            if (thumb) {
-              // maintain aspect ratio
-              const max = parseInt(thumb, 10);
-              const ratio = Math.min(max / w, max / h);
-              if (ratio < 1) { w = Math.round(w * ratio); h = Math.round(h * ratio); }
-            }
-            const canvas = document.createElement("canvas");
-            canvas.width = w; canvas.height = h;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(img, 0, 0, w, h);
-            canvas.toBlob((blob) => {
-              resolve(blob);
-            }, `image/${format === "jpg" ? "jpeg" : format}`, 0.92);
-          } catch (err) { reject(err); }
-        };
-        img.onerror = reject;
-        img.src = e.target.result;
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
-  // server-side doc/image convert wrapper
-  async function serverConvertFile(file, target) {
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("targetExt", target);
-      const resp = await fetchWithTimeout(`${API_BASE}/api/convert-doc`, { method: "POST", body: fd }, 30000);
-      if (!resp.ok) {
-        const j = await safeJSON(resp);
-        throw new Error((j && j.error) ? j.error : `Server returned ${resp.status}`);
-      }
-      const blob = await resp.blob();
-      return blob;
-    } catch (err) {
-      throw err;
-    }
-  }
-
-  // main convert handler used by button
-  async function doConvert() {
-    const file = fileInput && fileInput.files && fileInput.files[0];
-    const format = formatSel ? formatSel.value : null;
-    const thumbSize = thumbSizeEl ? parseInt(thumbSizeEl.value || thumbSizeEl, 10) : null;
-    if (!file) return alert("Choose a file first.");
-
-    // image client-side paths
-    if (file.type && file.type.startsWith("image/") && ["png", "jpg", "jpeg", "webp"].includes((format || "png").toLowerCase())) {
-      try {
-        const fmt = (format === "jpg" ? "jpeg" : (format || "png")).toLowerCase();
-        const blob = await clientImageConvert(file, fmt, thumbSize);
-        // preview and download
-        const url = URL.createObjectURL(blob);
-        if (previewImg) { previewImg.src = url; previewImg.style.display = ""; }
-        downloadBlob(blob, `converted.${format}`);
-      } catch (err) {
-        console.error("Client image convert failed:", err);
-        // fallback to server
-        try {
-          const blob = await serverConvertFile(file, `.${format}`);
-          if (previewImg) { previewImg.src = URL.createObjectURL(blob); previewImg.style.display = ""; }
-          downloadBlob(blob, `converted.${format}`);
-        } catch (err2) {
-          console.error("Server convert also failed:", err2);
-          alert("Image conversion failed.");
-        }
-      }
-      return;
-    }
-
-    // if file is text and user requested text -> simple download client-side
-    if (file.type === "text/plain" || (file.name && /\.txt$/i.test(file.name))) {
-      const blob = await file.arrayBuffer().then(buf => new Blob([buf], { type: 'text/plain' }));
-      downloadBlob(blob, file.name || "download.txt");
-      return;
-    }
-
-    // For advanced conversions (pdf/docx etc) try server
-    try {
-      const serverTarget = format && !format.startsWith(".") ? `.${format}` : (format || '.pdf');
-      const blob = await serverConvertFile(file, serverTarget);
-      // show preview if image, otherwise directly download
-      const mime = blob.type || 'application/octet-stream';
-      if (mime.startsWith("image/") && previewImg) {
-        previewImg.src = URL.createObjectURL(blob);
-        previewImg.style.display = "";
-      }
-      const ext = serverTarget.replace(/^\./, '');
-      downloadBlob(blob, `${file.name.replace(/\.[^/.]+$/, '')}.${ext}`);
-    } catch (err) {
-      console.error("Server doc convert failed:", err);
-      alert("Conversion failed. Server may be unavailable or file type unsupported.");
-    }
-  }
-
-  if (convertBtn) on(convertBtn, "click", doConvert);
-})();
-
-/* =========================
-   ZIP / UNZIP (JSZip required for unzip)
-   ========================= */
-(function zipInit() {
-  const zipInput = $("zip-input") || $("zipInput");
-  const zipCreateBtn = $("zip-create") || $("zip-create-btn") || $("zipBtn");
-  const zipUnpackBtn = $("zip-unpack") || $("zip-unpack-btn") || $("unzipBtn");
-  const zipOutputList = $("zip-output") || $("zipOutput") || $("zipOutputList");
-
-  async function createZip() {
-    const files = zipInput && zipInput.files;
-    if (!files || !files.length) return alert("Select files to zip.");
-    if (typeof JSZip === "undefined") return alert("JSZip library is required for zipping.");
-    const zip = new JSZip();
-    for (let i = 0; i < files.length; i++) {
-      zip.file(files[i].name, await files[i].arrayBuffer());
-    }
-    const blob = await zip.generateAsync({ type: "blob" });
-    downloadBlob(blob, "archive.zip");
-  }
-
-  async function unpackZip() {
-    const files = zipInput && zipInput.files;
-    if (!files || !files.length) return alert("Select a zip file to inspect.");
-    const f = files[0];
-    if (typeof JSZip === "undefined") return alert("JSZip library is required for unzipping.");
-    try {
-      const z = new JSZip();
-      const loaded = await z.loadAsync(await f.arrayBuffer());
-      if (zipOutputList) zipOutputList.innerHTML = "";
-      z.forEach(async (relativePath, file) => {
-        if (file.dir) {
-          if (zipOutputList) {
-            const li = document.createElement("li");
-            li.textContent = relativePath + " (dir)";
-            zipOutputList.appendChild(li);
-          }
-        } else {
-          const blob = await file.async("blob");
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = relativePath.split("/").pop();
-          a.textContent = `Download ${relativePath.split("/").pop()}`;
-          a.style.display = "inline-block";
-          a.style.margin = "6px 0";
-          if (zipOutputList) {
-            const li = document.createElement("li");
-            li.appendChild(a);
-            zipOutputList.appendChild(li);
-          } else {
-            // fallback open in new window
-            const w = window.open();
-            w.document.write(`<a href="${url}" download="${relativePath.split("/").pop()}">Download ${relativePath.split("/").pop()}</a>`);
-          }
-        }
-      });
-    } catch (err) {
-      console.error("Unzip failed:", err);
-      alert("Failed to inspect/unzip file. Make sure it is a valid zip.");
-    }
-  }
-
-  if (zipCreateBtn) on(zipCreateBtn, "click", createZip);
-  if (zipUnpackBtn) on(zipUnpackBtn, "click", unpackZip);
-})();
-
-/* =========================
-   Image Converter + Thumbnail + Editor (client-side editor with overlays)
-   - Provides editing controls UI if not already present
-   - Allows overlay text, overlay color, brightness, font size; creates final download
-   - Falls back to server conversion if requested
-   ========================= */
-(function imageEditorInit() {
-  const fileInput = $("ic-file") || $("imageInput") || null;
-  const preview = $("ic-output") || $("imagePreview") || null;
-  const formatSel = $("ic-format") || $("imageFormat") || null;
-  const thumbSize = $("ic-thumb-size") || null;
-  const downloadBtn = $("imageDownloadBtn") || $("downloadBtn") || null;
-  const thumbDownloadBtn = $("thumbDownloadBtn") || null;
-
-  if (!fileInput || !preview) return;
-
-  // ensure preview hidden before load
-  if (!preview.getAttribute("src") || preview.getAttribute("src") === "") preview.style.display = "none";
-
-  // create editor UI if not present
-  function ensureEditorUI() {
-    let editor = $("et-editor");
-    if (editor) return editor;
-    editor = document.createElement("div");
-    editor.id = "et-editor";
-    editor.style.marginTop = "10px";
-    editor.innerHTML = `
+  // dynamic editor panel for images (reused also by image section)
+  function createImageEditorPanel(previewEl) {
+    // create only once
+    if (document.getElementById('ft-image-editor')) return document.getElementById('ft-image-editor');
+    const container = document.createElement('div');
+    container.id = 'ft-image-editor';
+    container.style.marginTop = '10px';
+    container.innerHTML = `
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-        <label>Overlay text: <input id="et-text" placeholder="Add text"/></label>
-        <label>Text color: <input id="et-text-color" type="color" value="#ffffff"/></label>
-        <label>Font size: <input id="et-font-size" type="number" value="28" style="width:80px"/></label>
-        <label>Brightness: <input id="et-brightness" type="range" min="-100" max="100" value="0"/></label>
-        <label>Overlay color: <input id="et-overlay-color" type="color" value="#000000"/></label>
-        <label>Overlay opacity: <input id="et-overlay-opacity" type="range" min="0" max="1" step="0.05" value="0"/></label>
-        <button id="et-apply" class="btn">Apply edits</button>
-        <button id="et-reset" class="btn">Reset</button>
+        <label>Brightness: <input id="ft-brightness" type="range" min="-100" max="100" value="0"/></label>
+        <label>Overlay text: <input id="ft-overlay-text" type="text" placeholder="Text"/></label>
+        <label>Text color: <input id="ft-overlay-color" type="color" value="#ffffff"/></label>
+        <label>Font size: <input id="ft-font-size" type="number" value="36" style="width:80px"/></label>
+        <button id="ft-apply" class="btn">Apply Edits</button>
+        <button id="ft-reset" class="btn">Reset</button>
+        <button id="ft-download" class="btn">Download Edited Image</button>
+        <button id="ft-send-server" class="btn">Send to Server (convert)</button>
       </div>
     `;
-    try { preview.parentElement.insertBefore(editor, preview.nextSibling); } catch (e) { document.body.appendChild(editor); }
-    return editor;
+    try { previewEl.parentNode.insertBefore(container, previewEl.nextSibling); } catch(e){ document.body.appendChild(container); }
+    return container;
   }
 
-  const editor = ensureEditorUI();
-  const etText = $("et-text");
-  const etTextColor = $("et-text-color");
-  const etFontSize = $("et-font-size");
-  const etBrightness = $("et-brightness");
-  const etOverlayColor = $("et-overlay-color");
-  const etOverlayOpacity = $("et-overlay-opacity");
-  const etApply = $("et-apply");
-  const etReset = $("et-reset");
-
-  // utility to convert file + edits into dataURL via canvas
-  async function renderEditedDataURL(file, options = {}) {
+  async function fileToText(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      const img = new Image();
-      reader.onload = function (e) {
-        img.onload = function () {
-          try {
-            let w = img.width, h = img.height;
-            // safety cap: downscale if huge
-            const maxPixels = 4000 * 4000; // arbitrary safe cap
-            if (w * h > maxPixels) {
-              const scale = Math.sqrt(maxPixels / (w * h));
-              w = Math.round(w * scale);
-              h = Math.round(h * scale);
-            }
-            const canvas = document.createElement("canvas");
-            canvas.width = w; canvas.height = h;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(img, 0, 0, w, h);
-
-            // brightness (naive modulate)
-            if (options.brightness && options.brightness !== 0) {
-              const bright = parseInt(options.brightness, 10);
-              const imgd = ctx.getImageData(0, 0, w, h);
-              const data = imgd.data;
-              for (let i = 0; i < data.length; i += 4) {
-                data[i] = Math.min(255, Math.max(0, data[i] + bright));
-                data[i + 1] = Math.min(255, Math.max(0, data[i + 1] + bright));
-                data[i + 2] = Math.min(255, Math.max(0, data[i + 2] + bright));
-              }
-              ctx.putImageData(imgd, 0, 0);
-            }
-
-            // overlay
-            if (options.overlayOpacity && parseFloat(options.overlayOpacity) > 0) {
-              ctx.fillStyle = hexToRgba(options.overlayColor || "#000000", parseFloat(options.overlayOpacity));
-              ctx.fillRect(0, 0, w, h);
-            }
-
-            // text overlay
-            if (options.text && options.text.trim()) {
-              const fontSize = parseInt(options.fontSize || 28, 10);
-              ctx.font = `${fontSize}px sans-serif`;
-              ctx.fillStyle = options.textColor || "#fff";
-              ctx.textAlign = "center";
-              ctx.textBaseline = "middle";
-              ctx.fillText(options.text, w / 2, h / 2);
-            }
-
-            const dataURL = canvas.toDataURL(options.mime || "image/png", options.quality || 0.92);
-            resolve(dataURL);
-          } catch (err) { reject(err); }
-        };
-        img.onerror = reject;
-        img.src = e.target.result;
-      };
       reader.onerror = reject;
-      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.readAsText(file);
     });
   }
 
-  function hexToRgba(hex, alpha) {
-    const h = hex.replace('#','');
-    const bigint = parseInt(h.length === 3 ? h.split('').map(c => c+c).join('') : h, 16);
-    const r = (bigint >> 16) & 255;
-    const g = (bigint >> 8) & 255;
-    const b = bigint & 255;
-    return `rgba(${r},${g},${b},${alpha})`;
-  }
-
-  // attach change preview
-  fileInput.addEventListener("change", (e) => {
-    const f = e.target.files && e.target.files[0];
-    if (!f) { preview.src = ""; preview.style.display = "none"; return; }
-    if (f.type && f.type.startsWith("image/")) {
+  async function fileToDataURL(file) {
+    return new Promise((resolve,reject) => {
       const r = new FileReader();
-      r.onload = (ev) => { preview.src = ev.target.result; preview.style.display = ""; };
-      r.readAsDataURL(f);
-    } else {
-      preview.src = ""; preview.style.display = "none";
-    }
-  });
+      r.onerror = reject;
+      r.onload = () => resolve(r.result);
+      r.readAsDataURL(file);
+    });
+  }
 
-  // Apply edits -> update preview
-  etApply.addEventListener("click", async () => {
-    const f = fileInput.files && fileInput.files[0];
-    if (!f) return alert("Select an image first.");
-    try {
-      const dataURL = await renderEditedDataURL(f, {
-        text: etText.value || "",
-        textColor: etTextColor.value || "#ffffff",
-        fontSize: etFontSize.value || 28,
-        brightness: etBrightness.value || 0,
-        overlayColor: etOverlayColor.value || "#000000",
-        overlayOpacity: etOverlayOpacity.value || 0,
-        mime: (formatSel && formatSel.value) ? `image/${formatSel.value === 'jpg' ? 'jpeg' : formatSel.value}` : "image/png"
-      });
-      preview.src = dataURL;
-      preview.style.display = "";
-    } catch (err) {
-      console.error("Apply edits failed:", err);
-      alert("Failed to apply edits.");
-    }
-  });
-
-  // Reset -> restore original preview
-  etReset.addEventListener("click", () => {
-    const f = fileInput.files && fileInput.files[0];
-    if (!f) return;
-    const r = new FileReader();
-    r.onload = (ev) => { preview.src = ev.target.result; preview.style.display = ""; };
-    r.readAsDataURL(f);
-  });
-
-  // Download final edited image
-  if (downloadBtn) {
-    downloadBtn.addEventListener("click", async () => {
-      const f = fileInput.files && fileInput.files[0];
-      if (!f) return alert("Select an image first.");
-      try {
-        const dataURL = await renderEditedDataURL(f, {
-          text: etText.value || "",
-          textColor: etTextColor.value || "#ffffff",
-          fontSize: etFontSize.value || 28,
-          brightness: etBrightness.value || 0,
-          overlayColor: etOverlayColor.value || "#000000",
-          overlayOpacity: etOverlayOpacity.value || 0,
-          mime: (formatSel && formatSel.value) ? `image/${formatSel.value === 'jpg' ? 'jpeg' : formatSel.value}` : "image/png"
-        });
-        // blob + download
-        const res = await fetch(dataURL);
-        const blob = await res.blob();
-        const ext = (formatSel && formatSel.value) ? formatSel.value.replace('jpeg','jpg') : 'png';
-        downloadBlob(blob, `edited.${ext}`);
-      } catch (err) {
-        console.error("Download edited failed:", err);
-        // fallback: try server conversion
+  // render image on canvas and apply edits -> returns blob
+  async function renderImageWithEdits(fileOrDataURL, opts={}) {
+    // fileOrDataURL can be File or dataURL string
+    return new Promise((resolve,reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onerror = reject;
+      img.onload = async () => {
         try {
-          const fd = new FormData();
-          fd.append("file", f);
-          fd.append("format", (formatSel && formatSel.value) || "png");
-          const resp = await fetchWithTimeout(`${API_BASE}/api/convert-image`, { method: "POST", body: fd }, 30000);
-          if (!resp.ok) throw new Error("Server convert failed");
-          const blob = await resp.blob();
-          downloadBlob(blob, `converted.${(formatSel && formatSel.value) || 'png'}`);
-        } catch (err2) {
-          console.error("Server fallback failed:", err2);
-          alert("Download failed.");
-        }
-      }
+          // compute scaled dims if opts.width/height specified
+          let w = img.width, h = img.height;
+          if (opts.maxSize) {
+            const s = Math.min(1, opts.maxSize / Math.max(w,h));
+            if (s < 1) { w = Math.round(w*s); h = Math.round(h*s); }
+          }
+          const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+
+          // brightness
+          if (opts.brightness && opts.brightness !== 0) {
+            const imgd = ctx.getImageData(0,0,w,h); const d = imgd.data;
+            const delta = parseInt(opts.brightness,10);
+            for (let i=0;i<d.length;i+=4){ d[i]=Math.min(255,Math.max(0,d[i]+delta)); d[i+1]=Math.min(255,Math.max(0,d[i+1]+delta)); d[i+2]=Math.min(255,Math.max(0,d[i+2]+delta)); }
+            ctx.putImageData(imgd,0,0);
+          }
+
+          // overlay
+          if (opts.overlayOpacity && opts.overlayOpacity>0) {
+            ctx.fillStyle = opts.overlayColor || '#000';
+            ctx.globalAlpha = opts.overlayOpacity;
+            ctx.fillRect(0,0,w,h);
+            ctx.globalAlpha = 1;
+          }
+
+          // text
+          if (opts.overlayText && opts.overlayText.trim()) {
+            ctx.font = `${opts.fontSize||36}px sans-serif`;
+            ctx.fillStyle = opts.overlayTextColor || '#fff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(opts.overlayText, w/2, h/2);
+          }
+
+          // export as blob
+          const mime = (opts.mime || 'image/png');
+          canvas.toBlob(blob => {
+            if (!blob) return reject(new Error('Failed to create blob'));
+            resolve({ blob, dataURL: canvas.toDataURL(mime) });
+          }, mime, opts.quality || 0.92);
+        } catch(e){ reject(e); }
+      };
+      if (typeof fileOrDataURL === 'string') img.src = fileOrDataURL; else img.src = URL.createObjectURL(fileOrDataURL);
     });
   }
 
-  // thumbnail download (smaller size)
-  if (thumbDownloadBtn) {
-    thumbDownloadBtn.addEventListener("click", async () => {
-      const f = fileInput.files && fileInput.files[0];
-      if (!f) return alert("Select an image first.");
-      const size = (thumbSize && parseInt(thumbSize.value || thumbSize, 10)) || 200;
-      try {
-        // use renderEditedDataURL but resize
-        const dataURL = await renderEditedDataURL(f, {
-          text: etText.value || "",
-          textColor: etTextColor.value || "#fff",
-          fontSize: etFontSize.value || 18,
-          brightness: etBrightness.value || 0,
-          overlayColor: etOverlayColor.value || "#000000",
-          overlayOpacity: etOverlayOpacity.value || 0,
-          mime: "image/png",
-          // size handled by canvas resizing inside function if provided (we'll implement small wrapper)
-        });
-        const res = await fetch(dataURL);
-        const blob = await res.blob();
-        downloadBlob(blob, `thumbnail.png`);
-      } catch (err) {
-        console.error("Thumbnail failed:", err);
-        alert("Thumbnail creation failed.");
+  // reset preview
+  function hidePreview(p) { if (!p) return; p.src=''; p.style.display='none'; }
+
+  if (!convertBtn) return;
+
+  // file selected -> for text files populate textarea for editing; for images show preview and editor
+  if (fileInput) {
+    fileInput.addEventListener('change', async (e) => {
+      const f = e.target.files && e.target.files[0];
+      if (!f) { if (textArea) textArea.value=''; hidePreview(previewImg); return; }
+      // text
+      if (f.type.startsWith('text/') || /\.txt$/i.test(f.name)) {
+        // load into textarea so user can edit before converting/downloading
+        if (textArea) {
+          try {
+            const txt = await fileToText(f);
+            textArea.value = txt;
+            if (outputArea) outputArea.innerHTML = `<p>Text file loaded. Edit below then click Convert.</p>`;
+          } catch(err) { console.error('read text failed', err); }
+        }
+        hidePreview(previewImg);
+        return;
       }
+      // image
+      if (f.type.startsWith('image/') || /\.(jpe?g|png|webp|gif)$/i.test(f.name)) {
+        try {
+          const dataUrl = await fileToDataURL(f);
+          if (previewImg) { previewImg.src = dataUrl; previewImg.style.display='block'; }
+          // ensure image editor UI exists
+          const editor = createImageEditorPanel(previewImg);
+          // attach editor controls
+          attachImageEditorHandlers(editor, f);
+        } catch(err) { console.error('image preview failed', err); }
+        if (outputArea) outputArea.innerHTML = '<p>Image loaded. Use editor to adjust before download or server convert.</p>';
+        return;
+      }
+      // other files
+      hidePreview(previewImg);
+      if (outputArea) outputArea.innerHTML = `<p>File loaded: ${f.name} (${Math.round(f.size/1024)} KB). Select a target format and click Convert (server conversion required for some formats).</p>`;
     });
   }
+
+  // attach editor handlers - created per-file context (replaces redundant listeners)
+  function attachImageEditorHandlers(editorEl, originalFile) {
+    if (!editorEl) return;
+    const brightnessEl = $('ft-brightness');
+    const overlayTextEl = $('ft-overlay-text');
+    const overlayColorEl = $('ft-overlay-color');
+    const fontSizeEl = $('ft-font-size');
+    const applyBtn = $('ft-apply');
+    const resetBtn = $('ft-reset');
+    const downloadBtn = $('ft-download');
+    const sendServerBtn = $('ft-send-server');
+
+    // Store last preview dataURL for reset
+    let lastOriginalDataURL = null;
+    (async()=>{
+      try { lastOriginalDataURL = await fileToDataURL(originalFile); } catch(e){console.error(e);}
+    })();
+
+    on(applyBtn, 'click', async ()=>{
+      try {
+        const opts = {
+          brightness: brightnessEl ? parseInt(brightnessEl.value||'0',10) : 0,
+          overlayText: overlayTextEl ? overlayTextEl.value : '',
+          overlayTextColor: overlayColorEl ? overlayColorEl.value : '#fff',
+          overlayColor: '#000000',
+          overlayOpacity: 0,
+          fontSize: fontSizeEl ? parseInt(fontSizeEl.value||'36',10) : 36,
+          mime: 'image/png',
+          quality: 0.92,
+          maxSize: 2000
+        };
+        const res = await renderImageWithEdits(lastOriginalDataURL || originalFile, opts);
+        if (previewImg) { previewImg.src = res.dataURL; previewImg.style.display='block'; }
+        if (outputArea) outputArea.innerHTML = `<p>Edits applied. Click Download Edited Image to save locally or "Send to Server (convert)" for backend conversion.</p>`;
+        // save produced blob in element for download/send
+        previewImg._editedBlob = res.blob;
+      } catch(err){ console.error('apply edits failed', err); alert('Apply edits failed'); }
+    });
+    on(resetBtn, 'click', ()=>{
+      if (lastOriginalDataURL) previewImg.src = lastOriginalDataURL;
+      previewImg._editedBlob = null;
+      if (outputArea) outputArea.innerHTML = `<p>Reset to original.</p>`;
+    });
+    on(downloadBtn, 'click', async ()=>{
+      try {
+        let blob = previewImg._editedBlob;
+        if (!blob) {
+          // produce blob from current preview or original
+          const dataURL = previewImg.src || (lastOriginalDataURL || '');
+          if (!dataURL) return alert('No edited image available to download.');
+          const res = await fetch(dataURL); blob = await res.blob();
+        }
+        downloadBlob(blob, `image-edited.png`);
+      } catch(err){ console.error('download edited failed', err); alert('Download failed'); }
+    });
+    on(sendServerBtn, 'click', async ()=>{
+      try {
+        let blob = previewImg._editedBlob;
+        if (!blob) {
+          if (!previewImg.src) return alert('No edited image to send.');
+          const res = await fetch(previewImg.src); blob = await res.blob();
+        }
+        // prepare formdata and send to server for conversion using selected target format
+        const fd = new FormData();
+        fd.append('file', blob, (originalFile && originalFile.name) ? originalFile.name : 'edited.png');
+        const targetFormat = formatSel && formatSel.value ? formatSel.value : 'png';
+        fd.append('format', targetFormat);
+        // attach any extra options if available
+        const resp = await fetchWithTimeout(`${API_BASE}/api/convert-image`, { method:'POST', body: fd }, 30000);
+        if (!resp.ok) { const j = await safeJSON(resp); throw new Error((j && j.error) ? j.error : `Server ${resp.status}`); }
+        const serverBlob = await resp.blob();
+        downloadBlob(serverBlob, `server-converted.${targetFormat}`);
+      } catch(err){ console.error('send server failed', err); alert('Server conversion failed: '+(err.message||err)); }
+    });
+  }
+
+  // do conversion handler (top-level)
+  on(convertBtn, 'click', async ()=>{
+    try {
+      const f = fileInput && fileInput.files && fileInput.files[0];
+      const target = formatSel && formatSel.value ? formatSel.value : null;
+      // If user edited text area and wants to convert text -> create blob from textarea
+      if (textArea && textArea.value && (!f || (f && (f.type.startsWith('text/') || /\.txt$/i.test(f.name))))) {
+        const name = (nameInput && nameInput.value) ? nameInput.value : (f ? f.name.replace(/\.[^/.]+$/,'')+'.txt' : 'document.txt');
+        const textBlob = new Blob([textArea.value], { type: 'text/plain' });
+        // if target is 'pdf' or other, send to server
+        if (target && target !== 'txt') {
+          const fd = new FormData(); fd.append('file', textBlob, name); fd.append('targetExt', target.startsWith('.')?target:`.${target}`);
+          const resp = await fetchWithTimeout(`${API_BASE}/api/convert-doc`, { method:'POST', body: fd }, 300000);
+          if (!resp.ok) { const j = await safeJSON(resp); throw new Error((j && j.error) ? j.error : `Server ${resp.status}`); }
+          const blob = await resp.blob(); downloadBlob(blob, (name.replace(/\.[^/.]+$/,'') + (target.startsWith('.')?target:`.${target}`)));
+          if (outputArea) outputArea.innerHTML = `<p>Server conversion completed.</p>`;
+        } else {
+          // just download txt
+          downloadBlob(textBlob, name);
+        }
+        return;
+      }
+
+      // If file exists and is image -> prefer client-side edit or create blob then possibly server convert
+      if (f && f.type.startsWith('image/')) {
+        // if preview has edited blob, download it locally or send to server depending on target
+        const previewEditedBlob = (previewImg && previewImg._editedBlob) ? previewImg._editedBlob : null;
+        if (!target || target === 'png' || target === 'jpg' || target === 'jpeg' || target==='webp') {
+          // if user edited, download edited; otherwise client convert using canvas
+          if (previewEditedBlob) { downloadBlob(previewEditedBlob, `image-edited.${target||'png'}`); return; }
+          // try client conversion
+          try {
+            const { blob } = await renderImageWithEdits(f, { mime: `image/${target||'png'}`, quality: 0.92, maxSize: 2000 });
+            downloadBlob(blob, `converted.${target||'png'}`);
+            return;
+          } catch(e) { console.warn('client image convert failed, will try server', e); }
+        }
+        // fallback to server convert
+        const fd = new FormData(); fd.append('file', previewEditedBlob || f); fd.append('targetExt', target? (target.startsWith('.')?target:`.${target}`) : '.png');
+        const resp = await fetchWithTimeout(`${API_BASE}/api/convert-doc`, { method:'POST', body: fd }, 300000);
+        if (!resp.ok) { const j = await safeJSON(resp); throw new Error((j && j.error)?j.error:`Server ${resp.status}`); }
+        const blob = await resp.blob(); downloadBlob(blob, `converted.${target||'out'}`);
+        return;
+      }
+
+      // Other generic files -> prefer server conversion (docx,pdf,etc)
+      if (f) {
+        if (!target) return alert('Choose a target format for conversion.');
+        const fd = new FormData(); fd.append('file', f); fd.append('targetExt', target.startsWith('.')?target:`.${target}`);
+        const resp = await fetchWithTimeout(`${API_BASE}/api/convert-doc`, { method:'POST', body: fd }, 300000);
+        if (!resp.ok) { const j = await safeJSON(resp); throw new Error((j && j.error)?j.error:`Server ${resp.status}`); }
+        const blob = await resp.blob(); downloadBlob(blob, f.name.replace(/\.[^/.]+$/,'') + (target.startsWith('.')?target:`.${target}`));
+        return;
+      }
+
+      alert('No file or editable text found to convert.');
+    } catch(err) { console.error('convert error',err); alert('Conversion failed: '+(err.message||err)); }
+  });
+
+})(); // end fileConverterInit
+
+/* =========================================================================
+   IMAGE CONVERTER / THUMBNAIL (page-level - similar editor but with explicit thumb option)
+   - Allows applying edits, previewing, download or server convert
+   ========================================================================== */
+(function imageConverterInit(){
+  const fileInput = $('ic-file') || $('image-file') || $('imageInput');
+  const formatSel = $('ic-format') || $('image-format');
+  const thumbSize = $('ic-thumb-size') || $('image-thumb-size');
+  const runBtn = $('ic-run') || $('image-run');
+  const preview = $('ic-output') || $('image-preview');
+
+  if (!fileInput || !runBtn || !preview) return;
+
+  // create editor UI (if not existing) - reuse createImageEditorPanel from file converter area by triggering same id
+  function ensureEditor() {
+    if (document.getElementById('ft-image-editor')) return document.getElementById('ft-image-editor');
+    const editor = document.createElement('div');
+    editor.id = 'ft-image-editor';
+    editor.style.marginTop = '10px';
+    editor.innerHTML = `
+      <label>Brightness: <input id="ic-brightness" type="range" min="-100" max="100" value="0"/></label>
+      <label>Overlay text: <input id="ic-overlay-text" type="text" placeholder="Add text"/></label>
+      <label>Text color: <input id="ic-overlay-color" type="color" value="#ffffff"/></label>
+      <label>Font size: <input id="ic-font-size" type="number" value="28" style="width:80px"/></label>
+      <button id="ic-apply" class="btn">Apply</button>
+      <button id="ic-reset" class="btn">Reset</button>
+      <button id="ic-download" class="btn">Download Edited</button>
+      <button id="ic-server" class="btn">Send to Server</button>
+    `;
+    try { preview.parentNode.insertBefore(editor, preview.nextSibling); } catch(e){ document.body.appendChild(editor); }
+    return editor;
+  }
+  const editor = ensureEditor();
+
+  // store original dataURL to reset easily
+  let originalDataURL = null;
+  fileInput.addEventListener('change', async (e)=>{
+    const f = e.target.files && e.target.files[0];
+    if (!f) { preview.src=''; preview.style.display='none'; return; }
+    if (!f.type.startsWith('image/')) return alert('Choose an image file');
+    originalDataURL = await (async ()=>{ const r = new FileReader(); return new Promise((res,rej)=>{ r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f); }) })();
+    preview.src = originalDataURL; preview.style.display='block';
+  });
+
+  on($('ic-apply'), 'click', async ()=>{
+    try {
+      const brightness = parseInt($('ic-brightness')?.value||'0',10);
+      const overlayText = $('ic-overlay-text')?.value || '';
+      const overlayColor = $('ic-overlay-color')?.value || '#fff';
+      const fontSize = parseInt($('ic-font-size')?.value || '28', 10);
+      const opts = { brightness, overlayText, overlayTextColor: overlayColor, fontSize, mime: `image/${(formatSel && formatSel.value) ? formatSel.value : 'png'}`, quality: 0.92, maxSize: 2000 };
+      const res = await renderImageWithEdits(originalDataURL, opts);
+      preview.src = res.dataURL; preview._editedBlob = res.blob;
+    } catch(err){ console.error('apply image edits', err); alert('Apply edits failed') }
+  });
+
+  on($('ic-reset'), 'click', ()=>{ if (originalDataURL) preview.src = originalDataURL; preview._editedBlob = null; });
+
+  on($('ic-download'), 'click', async ()=>{
+    try {
+      let blob = preview._editedBlob;
+      if (!blob) {
+        if (!preview.src) return alert('Nothing to download');
+        const resp = await fetch(preview.src); blob = await resp.blob();
+      }
+      const ext = (formatSel && formatSel.value) ? formatSel.value : 'png';
+      downloadBlob(blob, `edited.${ext}`);
+    } catch(err){ console.error('download edited', err); alert('Download failed'); }
+  });
+
+  on($('ic-server'), 'click', async ()=>{
+    try {
+      let blob = preview._editedBlob;
+      if (!blob) {
+        if (!preview.src) return alert('No edited image to send');
+        const resp = await fetch(preview.src); blob = await resp.blob();
+      }
+      const fd = new FormData(); fd.append('file', blob, 'edited.png');
+      fd.append('format', (formatSel && formatSel.value) ? formatSel.value : 'png');
+      // example width/height using thumb size
+      if (thumbSize && thumbSize.value) fd.append('width', thumbSize.value);
+      const resp = await fetchWithTimeout(`${API_BASE}/api/convert-image`, { method:'POST', body: fd }, 60000);
+      if (!resp.ok) { const j = await safeJSON(resp); throw new Error((j && j.error)?j.error:`Server ${resp.status}`); }
+      const serverBlob = await resp.blob();
+      downloadBlob(serverBlob, `server-converted.${formatSel && formatSel.value ? formatSel.value : 'png'}`);
+    } catch(err){ console.error('server convert image', err); alert('Server conversion failed: '+(err.message||err)); }
+  });
+
+  // run button: if user clicks run, try conversion (prefers server if target not simple)
+  on(runBtn, 'click', async ()=>{
+    try {
+      const f = fileInput.files && fileInput.files[0];
+      if (!f) return alert('Choose an image first');
+      const desiredFormat = formatSel && formatSel.value ? formatSel.value : 'png';
+      // if preview has edited blob and desiredFormat is same family, download
+      if (preview._editedBlob && ['png','jpg','jpeg','webp'].includes(desiredFormat)) {
+        downloadBlob(preview._editedBlob, `converted.${desiredFormat}`);
+        return;
+      }
+      // otherwise do server conversion
+      const fd = new FormData(); fd.append('file', (preview._editedBlob||f), f.name || 'image.png'); fd.append('format', desiredFormat);
+      const resp = await fetchWithTimeout(`${API_BASE}/api/convert-image`, { method:'POST', body: fd }, 60000);
+      if (!resp.ok) { const j = await safeJSON(resp); throw new Error((j && j.error)?j.error:`Server ${resp.status}`); }
+      const blob = await resp.blob(); downloadBlob(blob, `converted.${desiredFormat}`);
+    } catch(err){ console.error('image convert run', err); alert('Image conversion failed: '+(err.message||err)); }
+  });
 })();
 
 /* =========================
-   Expose legacy-friendly names (for HTML inline handlers)
+   ZIP helpers (create/unpack)
    ========================= */
-window.updateWordCounter = window.updateWordCounter || (() => {
-  const ta = $("wc-input");
-  if (ta) ta.dispatchEvent(new Event('input'));
-});
-window.convertCase = window.convertCase || convertCase;
-window.speakText = window.speakText || (() => {
-  const btn = $("speakBtn") || $("tts-play");
-  if (btn) btn.click();
-});
-window.handleImageConvert = window.handleImageConvert || (() => {
-  const btn = $("downloadBtn") || $("convertBtn") || $("ic-convert");
-  if (btn) btn.click();
-});
-window.handleTextDownload = window.handleTextDownload || (() => {
-  const btn = $("fc-download") || $("fc-download-btn");
-  if (btn) btn.click();
-});
-window.handleZipCreate = window.handleZipCreate || (() => {
-  const btn = $("zip-create") || $("zipBtn");
-  if (btn) btn.click();
-});
-window.handleZipExtract = window.handleZipExtract || (() => {
-  const btn = $("zip-unpack") || $("unzipBtn");
-  if (btn) btn.click();
-});
+(function zipInit(){
+  const zipInput = $('zip-input') || $('zipInput');
+  const createBtn = $('zip-create') || $('zip-create-btn');
+  const unpackBtn = $('zip-unpack') || $('zip-unpack-btn');
+  const outList = $('zip-output') || $('zip-output-list');
+
+  on(createBtn,'click', async ()=>{
+    if (!zipInput || !zipInput.files || zipInput.files.length===0) return alert('Select files to zip.');
+    if (typeof JSZip === 'undefined') return alert('JSZip required');
+    const zip = new JSZip();
+    for (let i=0;i<zipInput.files.length;i++){ const f = zipInput.files[i]; zip.file(f.name, await f.arrayBuffer()); }
+    const blob = await zip.generateAsync({ type:'blob' });
+    downloadBlob(blob, 'archive.zip');
+  });
+
+  on(unpackBtn,'click', async ()=>{
+    if (!zipInput || !zipInput.files || zipInput.files.length===0) return alert('Choose a zip file to inspect');
+    if (typeof JSZip === 'undefined') return alert('JSZip required');
+    try {
+      const f = zipInput.files[0]; const z = new JSZip(); const data = await z.loadAsync(await f.arrayBuffer());
+      if (outList) outList.innerHTML = '';
+      z.forEach(async (rel, file) => {
+        if (file.dir) {
+          if (outList) { const li=document.createElement('li'); li.textContent = rel+' (dir)'; outList.appendChild(li); }
+        } else {
+          const blob = await file.async('blob');
+          const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = rel.split('/').pop(); a.textContent = 'Download '+rel.split('/').pop();
+          const li = document.createElement('li'); li.appendChild(a);
+          if (outList) outList.appendChild(li);
+        }
+      });
+    } catch(err){ console.error('unpack error', err); alert('Failed to unpack zip'); }
+  });
+})();
 
 /* =========================
-   Ready: seed checks
+   Expose a few global handlers for inline HTML compatibility
    ========================= */
-document.addEventListener("DOMContentLoaded", () => {
-  // seed update word counter
-  const wta = $("wc-input");
-  if (wta) wta.dispatchEvent(new Event('input'));
+window.handleFileConvert = () => { const btn = $('fc-run') || $('fc-convert') || $('convertBtn'); if (btn) btn.click(); };
+window.handleImageConvert = () => { const btn = $('ic-run') || $('image-run') || $('convertBtn'); if (btn) btn.click(); };
+window.handleTTSDownload = () => { const btn = $('tts-download') || $('tts-download-btn'); if (btn) btn.click(); };
+window.updateWordCounter = () => { const ta = $('wc-input'); if (ta) ta.dispatchEvent(new Event('input')); };
+
+document.addEventListener('DOMContentLoaded', ()=> {
+  // seed word counter
+  const w = $('wc-input'); if (w) w.dispatchEvent(new Event('input'));
 });
-           
+   
