@@ -128,12 +128,12 @@ async function speakTextWithSelectedLang() {
   if (out) out.innerHTML = '<em>Generating audio…</em>';
 
   try {
-    const resp = await fetch(`${API_BASE}/api/tts`, {
+    const resp = await fetch('https://evertoolbox-backend.onrender.com/api/tts', {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
     text,
-    lang: sel.value || "en"   // 👈 send the selected language
+    lang: sel.value || "auto"   // 👈 send the selected language
   })
 }, 30000);
 
