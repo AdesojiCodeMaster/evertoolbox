@@ -39,28 +39,140 @@
       <textarea id='tts-input' data-demo='Hello — welcome to EverToolbox demo.' rows='6' style='width:100%'>
         Hello — welcome to EverToolbox demo.</textarea>
       <p>
-<select id="tts-voices"  aria-label='Voices'>    
-  <option value="en">English</option>
-  <option value="es">Spanish</option>
+<!-- Language Selector (replace your old <select> with this version) -->
+<label for="tts-voices">Select Language:</label>
+<select id="tts-voices">
+  <!-- 🌐 Global Languages -->
+  <option value="en" selected>English</option>
   <option value="fr">French</option>
+  <option value="es">Spanish</option>
+  <option value="pt">Portuguese</option>
   <option value="de">German</option>
-  <option value="hi">Hindi</option>
-  <option value="ja">Japanese</option>
+  <option value="it">Italian</option>
+  <option value="nl">Dutch</option>
+  <option value="ru">Russian</option>
   <option value="zh-CN">Chinese (Simplified)</option>
   <option value="zh-TW">Chinese (Traditional)</option>
-  <option value="ar">Arabic</option>
-  <option value="ru">Russian</option>
-  <option value="pt">Portuguese</option>
-  <option value="it">Italian</option>
+  <option value="ja">Japanese</option>
   <option value="ko">Korean</option>
+  <option value="ar">Arabic</option>
+  <option value="hi">Hindi</option>
+  <option value="bn">Bengali</option>
   <option value="tr">Turkish</option>
-  <option value="sv">Swedish</option>
-  <option value="nl">Dutch</option> 
+  <option value="th">Thai</option>
+  <option value="vi">Vietnamese</option>
+  <option value="id">Indonesian</option>
+  <option value="ms">Malay</option>
+  <option value="sw">Swahili</option>
+
+  <!-- 🌍 African Languages -->
+  <optgroup label="African Languages">
+    <option value="yo">Yoruba</option>
+    <option value="ha">Hausa</option>
+    <option value="ig">Igbo</option>
+    <option value="am">Amharic</option>
+    <option value="so">Somali</option>
+    <option value="zu">Zulu</option>
+    <option value="xh">Xhosa</option>
+    <option value="st">Sesotho</option>
+    <option value="ny">Chichewa</option>
+    <option value="rw">Kinyarwanda</option>
+    <option value="ln">Lingala</option>
+    <option value="sn">Shona</option>
+    <option value="kg">Kongo</option>
+    <option value="ts">Tsonga</option>
+    <option value="tn">Tswana</option>
+  </optgroup>
+
+  <!-- 🇪🇺 European -->
+  <optgroup label="European Languages">
+    <option value="pl">Polish</option>
+    <option value="cs">Czech</option>
+    <option value="ro">Romanian</option>
+    <option value="hu">Hungarian</option>
+    <option value="fi">Finnish</option>
+    <option value="sv">Swedish</option>
+    <option value="no">Norwegian</option>
+    <option value="da">Danish</option>
+    <option value="el">Greek</option>
+    <option value="uk">Ukrainian</option>
+  </optgroup>
+
+  <!-- 🌏 Middle East & Asia -->
+  <optgroup label="Middle East & Asia">
+    <option value="fa">Persian (Farsi)</option>
+    <option value="ur">Urdu</option>
+    <option value="pa">Punjabi</option>
+    <option value="ta">Tamil</option>
+    <option value="te">Telugu</option>
+    <option value="ml">Malayalam</option>
+    <option value="mr">Marathi</option>
+    <option value="gu">Gujarati</option>
+    <option value="kn">Kannada</option>
+    <option value="ne">Nepali</option>
+    <option value="si">Sinhala</option>
+  </optgroup>
+
+  <!-- 💬 Others -->
+  <optgroup label="Other Languages">
+    <option value="cy">Welsh</option>
+    <option value="eo">Esperanto</option>
+    <option value="la">Latin</option>
+  </optgroup>
 </select>
-         <button class='btn' id = "tts-speak" onclick='speakText()'>
-          Play
-        </button>
-       <div id="tts-output"></div>
+        
+
+<!-- Buttons -->
+<button id="tts-speak">Speak Text</button>
+<button id="tts-preview">🔊 Preview Voice</button>
+
+<!-- Output -->
+<div id="tts-output"></div>
+
+<script>
+const API_BASE = 'https://evertoolbox-backend.onrender.com';
+
+// Preview only a short sample phrase in selected language
+async function previewVoice() {
+  const sel = document.getElementById('tts-voices');
+  const out = document.getElementById('tts-output');
+  const lang = sel.value || 'en';
+  const sample = 'This is a sample voice preview.'; // source phrase
+
+  out.innerHTML = '<em>Loading preview...</em>';
+
+  try {
+    const resp = await fetch(`${API_BASE}/api/tts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: sample, lang })
+    });
+
+    if (!resp.ok) throw new Error(`Server returned ${resp.status}`);
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+
+    const audio = document.createElement('audio');
+    audio.controls = true;
+    audio.autoplay = true;
+    audio.src = url;
+
+    out.innerHTML = `<strong>Preview voice (${lang}):</strong><br>`;
+    out.appendChild(audio);
+
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (err) {
+    console.error(err);
+    out.innerHTML = `<p style="color:red">Preview failed: ${err.message}</p>`;
+  }
+}
+
+// Hook up events
+document.getElementById('tts-preview').addEventListener('click', previewVoice);
+document.getElementById('tts-speak').addEventListener('click', speakTextWithSelectedLang);
+</script>
+
+
       </p>
     </article>  
   </main>
