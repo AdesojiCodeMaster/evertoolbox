@@ -137,15 +137,12 @@ async function speakTextWithSelectedLang() {
   const sel = document.getElementById('tts-voices');
   const out = document.getElementById('tts-output');
 
+  if (!ta) return alert('TTS input (#tts-input) not found.');
   const text = (ta.value || '').trim();
-  const lang = sel.value || 'en';
+  if (!text) return alert('Enter text to speak.');
 
-  if (!text) {
-    alert('Please enter text to speak.');
-    return;
-  }
-
-  out.innerHTML = '<em>Generating audio...</em>';
+  const lang = sel ? (sel.value || 'en') : 'en';
+  if (out) out.innerHTML = '<em>Generating translated audio…</em>';
 
   try {
     const resp = await fetch(`${API_BASE}/api/tts`, {
@@ -154,82 +151,51 @@ async function speakTextWithSelectedLang() {
       body: JSON.stringify({ text, lang })
     });
 
-    if (!resp.ok) throw new Error(`Server returned ${resp.status}`);
+    if (!resp.ok) {
+      let msg = `Server returned ${resp.status}`;
+      try { const j = await resp.json(); if (j.error) msg = j.error; } catch {}
+      throw new Error(msg);
+    }
 
     const blob = await resp.blob();
     const url = URL.createObjectURL(blob);
 
-    // Audio player
+    // Play the full generated audio
     const audio = document.createElement('audio');
     audio.controls = true;
-    audio.autoplay = true;
     audio.src = url;
-
-    // Download link
-    const download = document.createElement('a');
-    download.href = url;
-    download.download = `tts-${lang}.mp3`;
-    download.textContent = '⬇️ Download Audio';
-    download.style.display = 'inline-block';
-    download.style.marginTop = '8px';
-
-    out.innerHTML = `<strong>Spoken in ${lang}:</strong><br>`;
-    out.appendChild(audio);
-    out.appendChild(document.createElement('br'));
-    out.appendChild(download);
-
-    // Clean up object URL after 1 min
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-  } catch (err) {
-    console.error(err);
-    out.innerHTML = `<p style="color:red">TTS failed: ${err.message}</p>`;
-  }
-}
-
-// Preview only a short sample phrase in selected language
-async function previewVoice() {
-  const sel = document.getElementById('tts-voices');
-  const out = document.getElementById('tts-output');
-  const lang = sel.value || 'en';
-  const sample = 'This is a sample voice preview.';
-
-  out.innerHTML = '<em>Loading preview...</em>';
-
-  try {
-    const resp = await fetch(`${API_BASE}/api/tts`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: sample, lang })
-    });
-
-    if (!resp.ok) throw new Error(`Server returned ${resp.status}`);
-    const blob = await resp.blob();
-    const url = URL.createObjectURL(blob);
-
-    const audio = document.createElement('audio');
-    audio.controls = true;
     audio.autoplay = true;
-    audio.src = url;
 
-    out.innerHTML = `<strong>Preview voice (${lang}):</strong><br>`;
+    // Download button
+    const dl = document.createElement('a');
+    dl.href = url;
+    dl.download = 'translated_speech.mp3';
+    dl.textContent = '⬇ Download MP3';
+    dl.style.display = 'inline-block';
+    dl.style.marginLeft = '10px';
+    dl.style.fontWeight = 'bold';
+
+    out.innerHTML = '';
     out.appendChild(audio);
+    out.appendChild(dl);
 
     setTimeout(() => URL.revokeObjectURL(url), 60000);
   } catch (err) {
-    console.error(err);
-    out.innerHTML = `<p style="color:red">Preview failed: ${err.message}</p>`;
+    console.error('TTS failed:', err);
+    if (out) out.innerHTML = `<p style="color:red">TTS failed: ${err.message}</p>`;
   }
 }
 
-// Bind events after page is ready
-window.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('tts-preview').addEventListener('click', previewVoice);
-  document.getElementById('tts-speak').addEventListener('click', speakTextWithSelectedLang);
-});
-    </script>
-    
-
-      </p>
+// Attach event
+(function attachTTS() {
+  const btn = document.getElementById('tts-speak');
+  if (btn) btn.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    speakTextWithSelectedLang();
+  });
+})();
+</script>
+  </p>
     </article>  
   </main>
   <footer id="site-footer" class="site-footer" role="contentinfo">
