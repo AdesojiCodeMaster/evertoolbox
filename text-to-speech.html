@@ -128,16 +128,70 @@
 
 <!-- Output -->
 <div id="tts-output"></div>
-
 <script>
 const API_BASE = 'https://evertoolbox-backend.onrender.com';
+
+// Speak text with selected language (and offer download)
+async function speakTextWithSelectedLang() {
+  const ta = document.getElementById('tts-input');
+  const sel = document.getElementById('tts-voices');
+  const out = document.getElementById('tts-output');
+
+  const text = (ta.value || '').trim();
+  const lang = sel.value || 'en';
+
+  if (!text) {
+    alert('Please enter text to speak.');
+    return;
+  }
+
+  out.innerHTML = '<em>Generating audio...</em>';
+
+  try {
+    const resp = await fetch(`${API_BASE}/api/tts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, lang })
+    });
+
+    if (!resp.ok) throw new Error(`Server returned ${resp.status}`);
+
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+
+    // Audio player
+    const audio = document.createElement('audio');
+    audio.controls = true;
+    audio.autoplay = true;
+    audio.src = url;
+
+    // Download link
+    const download = document.createElement('a');
+    download.href = url;
+    download.download = `tts-${lang}.mp3`;
+    download.textContent = '⬇️ Download Audio';
+    download.style.display = 'inline-block';
+    download.style.marginTop = '8px';
+
+    out.innerHTML = `<strong>Spoken in ${lang}:</strong><br>`;
+    out.appendChild(audio);
+    out.appendChild(document.createElement('br'));
+    out.appendChild(download);
+
+    // Clean up object URL after 1 min
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (err) {
+    console.error(err);
+    out.innerHTML = `<p style="color:red">TTS failed: ${err.message}</p>`;
+  }
+}
 
 // Preview only a short sample phrase in selected language
 async function previewVoice() {
   const sel = document.getElementById('tts-voices');
   const out = document.getElementById('tts-output');
   const lang = sel.value || 'en';
-  const sample = 'This is a sample voice preview.'; // source phrase
+  const sample = 'This is a sample voice preview.';
 
   out.innerHTML = '<em>Loading preview...</em>';
 
@@ -167,11 +221,13 @@ async function previewVoice() {
   }
 }
 
-// Hook up events
-document.getElementById('tts-preview').addEventListener('click', previewVoice);
-document.getElementById('tts-speak').addEventListener('click', speakTextWithSelectedLang);
-</script>
-
+// Bind events after page is ready
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('tts-preview').addEventListener('click', previewVoice);
+  document.getElementById('tts-speak').addEventListener('click', speakTextWithSelectedLang);
+});
+    </script>
+    
 
       </p>
     </article>  
