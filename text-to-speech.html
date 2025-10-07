@@ -129,69 +129,69 @@
 <script>
 const API_BASE = 'https://evertoolbox-backend.onrender.com';
 
-// Speak text with selected language (and offer download)
-async function speakTextWithSelectedLang() {
-  const ta = document.getElementById('tts-input');
-  const sel = document.getElementById('tts-voices');
-  const out = document.getElementById('tts-output');
+  async function speakTextWithSelectedLang() {
+  const textArea = document.getElementById('tts-input');
+  const langSelect = document.getElementById('tts-voices');
+  const output = document.getElementById('tts-output');
 
-  if (!ta) return alert('TTS input (#tts-input) not found.');
-  const text = (ta.value || '').trim();
-  if (!text) return alert('Enter text to speak.');
+  const text = textArea.value.trim();
+  const lang = langSelect.value;
 
-  const lang = sel ? (sel.value || 'en') : 'en';
-  if (out) out.innerHTML = '<em>Generating translated audio…</em>';
+  if (!text) {
+    output.innerHTML = `<p style="color:red">Please enter some text.</p>`;
+    return;
+  }
+
+  output.innerHTML = `<em>Generating audio for ${lang}… Please wait.</em>`;
 
   try {
-    const resp = await fetch(`${API_BASE}/api/tts`, {
+    const resp = await fetch('https://evertoolbox-backend.onrender.com/api/tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, lang })
+      body: JSON.stringify({ text, lang }),
     });
 
     if (!resp.ok) {
-      let msg = `Server returned ${resp.status}`;
-      try { const j = await resp.json(); if (j.error) msg = j.error; } catch {}
-      throw new Error(msg);
+      const errData = await resp.json().catch(() => ({}));
+      throw new Error(errData.error || `Server returned ${resp.status}`);
     }
 
     const blob = await resp.blob();
     const url = URL.createObjectURL(blob);
 
-    // Play the full generated audio
+    // Create audio element
     const audio = document.createElement('audio');
     audio.controls = true;
-    audio.src = url;
     audio.autoplay = true;
+    audio.src = url;
 
-    // Download button
-    const dl = document.createElement('a');
-    dl.href = url;
-    dl.download = 'translated_speech.mp3';
-    dl.textContent = '⬇ Download MP3';
-    dl.style.display = 'inline-block';
-    dl.style.marginLeft = '10px';
-    dl.style.fontWeight = 'bold';
+    // Create download link
+    const downloadLink = document.createElement('a');
+    downloadLink.href = url;
+    downloadLink.download = `tts-${lang}.mp3`;
+    downloadLink.textContent = '⬇️ Download Audio';
+    downloadLink.style.marginLeft = '10px';
 
-    out.innerHTML = '';
-    out.appendChild(audio);
-    out.appendChild(dl);
+    output.innerHTML = `<strong>Playback (${lang}):</strong><br>`;
+    output.appendChild(audio);
+    output.appendChild(document.createElement('br'));
+    output.appendChild(downloadLink);
 
+    // Clean up URL later
     setTimeout(() => URL.revokeObjectURL(url), 60000);
-  } catch (err) {
-    console.error('TTS failed:', err);
-    if (out) out.innerHTML = `<p style="color:red">TTS failed: ${err.message}</p>`;
-  }
-}
 
-// Attach event
-(function attachTTS() {
-  const btn = document.getElementById('tts-speak');
-  if (btn) btn.addEventListener('click', (ev) => {
-    ev.preventDefault();
-    speakTextWithSelectedLang();
-  });
-})();
+  } catch (err) {
+    console.error('TTS Error:', err);
+    output.innerHTML = `
+      <p style="color:red">
+        ⚠️ Sorry, we couldn’t generate speech for <strong>${lang}</strong>.<br>
+        This may mean that language isn’t supported yet.<br>
+        Try a different language or shorter text.
+      </p>`;
+  }
+  }
+  
+  
   
 </script>
   </p>
