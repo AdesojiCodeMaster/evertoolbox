@@ -126,15 +126,15 @@
 
 <!-- Output -->
 <div id="tts-output"></div>
-    <script>
+ <script>
 const API_BASE = 'https://evertoolbox-backend.onrender.com';
 
-async function speakTextWithSelectedLang() {
+async function speakTextWithSelectedLang(langOverride = null) {
   const textArea = document.getElementById('tts-input');
   const langSelect = document.getElementById('tts-voices');
   const output = document.getElementById('tts-output');
   const text = textArea.value.trim();
-  const lang = langSelect.value;
+  const lang = langOverride || langSelect.value;
 
   output.innerHTML = '';
 
@@ -163,7 +163,6 @@ async function speakTextWithSelectedLang() {
       body: JSON.stringify({ text, lang }),
     });
 
-    // If backend error
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}));
       throw new Error(err.error || `Server returned ${resp.status}`);
@@ -172,7 +171,6 @@ async function speakTextWithSelectedLang() {
     const contentType = resp.headers.get('content-type') || '';
     const blob = await resp.blob();
 
-    // ❗ Detect unsupported languages (empty or invalid audio)
     if (!contentType.includes('audio') || blob.size < 2000) {
       output.innerHTML = `
         <p style="color:red">
@@ -209,20 +207,20 @@ async function speakTextWithSelectedLang() {
         ⚠️ Could not generate audio for <strong>${lang}</strong>.<br>
         It may not be supported or your connection failed.
      </p>`;
-   
+
     // Add fallback button
     const fallbackBtn = document.createElement('button');
     fallbackBtn.textContent = '🔁 Try English fallback';
     fallbackBtn.style.marginTop = '10px';
-    fallbackBtn.onclick = () => speakTextWithSelectedLang('en');
+    fallbackBtn.onclick = () => speakTextWithSelectedLang('en'); // ✅ works now
     output.appendChild(fallbackBtn);
-
   }
 }
 
-document.getElementById('tts-speak').addEventListener('click', speakTextWithSelectedLang);
-  </script>
-   
+document.getElementById('tts-speak')
+  .addEventListener('click', () => speakTextWithSelectedLang());
+ </script>
+  
   </p>
     </article>  
   </main>
