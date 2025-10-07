@@ -145,51 +145,53 @@ const API_BASE = 'https://evertoolbox-backend.onrender.com';
   output.innerHTML = `<em>Generating audio for ${lang}… Please wait.</em>`;
 
   try {
-    const resp = await fetch('https://evertoolbox-backend.onrender.com/api/tts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, lang }),
-    });
+  const resp = await fetch('https://evertoolbox-backend.onrender.com/api/tts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, lang }),
+  });
 
-    if (!resp.ok) {
-      const errData = await resp.json().catch(() => ({}));
-      throw new Error(errData.error || `Server returned ${resp.status}`);
-    }
-
-    const blob = await resp.blob();
-    const url = URL.createObjectURL(blob);
-
-    // Create audio element
-    const audio = document.createElement('audio');
-    audio.controls = true;
-    audio.autoplay = true;
-    audio.src = url;
-
-    // Create download link
-    const downloadLink = document.createElement('a');
-    downloadLink.href = url;
-    downloadLink.download = `tts-${lang}.mp3`;
-    downloadLink.textContent = '⬇️ Download Audio';
-    downloadLink.style.marginLeft = '10px';
-
-    output.innerHTML = `<strong>Playback (${lang}):</strong><br>`;
-    output.appendChild(audio);
-    output.appendChild(document.createElement('br'));
-    output.appendChild(downloadLink);
-
-    // Clean up URL later
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-
-  } catch (err) {
-    console.error('TTS Error:', err);
-    output.innerHTML = `
-      <p style="color:red">
-        ⚠️ Sorry, we couldn’t generate speech for <strong>${lang}</strong>.<br>
-        This may mean that language isn’t supported yet.<br>
-        Try a different language or shorter text.
-      </p>`;
+  if (!resp.ok) {
+    const errData = await resp.json().catch(() => ({}));
+    throw new Error(errData.error || `Server returned ${resp.status}`);
   }
+
+  const contentType = resp.headers.get('content-type') || '';
+  if (!contentType.includes('audio')) {
+    throw new Error('Language not supported or invalid audio response.');
   }
+
+  const blob = await resp.blob();
+  if (!blob.size) throw new Error('No audio generated.');
+
+  const url = URL.createObjectURL(blob);
+  const audio = document.createElement('audio');
+  audio.controls = true;
+  audio.autoplay = true;
+  audio.src = url;
+
+  const downloadLink = document.createElement('a');
+  downloadLink.href = url;
+  downloadLink.download = `tts-${lang}.mp3`;
+  downloadLink.textContent = '⬇️ Download Audio';
+  downloadLink.style.marginLeft = '10px';
+
+  output.innerHTML = `<strong>Playback (${lang}):</strong><br>`;
+  output.appendChild(audio);
+  output.appendChild(document.createElement('br'));
+  output.appendChild(downloadLink);
+
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+
+} catch (err) {
+  console.error('TTS Error:', err);
+  output.innerHTML = `
+    <p style="color:red">
+      ⚠️ This language (<strong>${lang}</strong>) may not be supported yet.<br>
+      Try again with another language.
+    </p>`;
+                          }
+    
   
   
   
