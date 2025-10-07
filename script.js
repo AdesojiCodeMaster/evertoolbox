@@ -239,6 +239,7 @@ async function speakTextWithSelectedLang() {
    FILE CONVERTER (text editing + image editing before download or server convert)
    - Supports: text edit (txt->pdf via server), image edit (client-side) + server upload if user chooses server conversion
    ========================================================================== */
+/*
 (function fileConverterInit(){
   // Support multiple ID variants to match user's html
   const fileInput = $('fc-file') || $('fc-file-input') || $('fc-filepicker') || $('ic-file') || $('fileInput') || $('file-input');
@@ -524,6 +525,8 @@ async function speakTextWithSelectedLang() {
   });
 
 })(); // end fileConverterInit
+
+*/
 
 /* =========================================================================
    IMAGE CONVERTER / THUMBNAIL (page-level - similar editor but with explicit thumb option)
