@@ -132,7 +132,8 @@ const API_BASE = 'https://evertoolbox-backend.onrender.com';
    
 async function speakTextWithSelectedLang() {
   const textArea = document.getElementById('tts-input');
-  const langSelect = document.getElementById('lang-select');
+ // const langSelect = document.getElementById('lang-select');
+ const langSelect = document.getElementById('tts-voices');
   const output = document.getElementById('tts-output');
   const text = textArea.value.trim();
   const lang = langSelect.value;
