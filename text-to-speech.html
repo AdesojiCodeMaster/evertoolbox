@@ -208,13 +208,15 @@ async function speakTextWithSelectedLang() {
       <p style="color:red">
         ⚠️ Could not generate audio for <strong>${lang}</strong>.<br>
         It may not be supported or your connection failed.
-      </p>`;
-   // Add fallback button
+     </p>`;
+   
+    // Add fallback button
     const fallbackBtn = document.createElement('button');
     fallbackBtn.textContent = '🔁 Try English fallback';
     fallbackBtn.style.marginTop = '10px';
     fallbackBtn.onclick = () => speakTextWithSelectedLang('en');
     output.appendChild(fallbackBtn);
+
   }
 }
 
