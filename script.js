@@ -683,4 +683,184 @@ document.addEventListener('DOMContentLoaded', ()=> {
   // seed word counter
   const w = $('wc-input'); if (w) w.dispatchEvent(new Event('input'));
 });
+
+
+
+
+
+
+
+
+// ------------------------------
+// START: EverToolbox v2 Frontend Tools
+// ------------------------------
+
+
+
+/* ===========================================================
+   1. FILE CONVERTER + COMPRESSION + WATERMARK
+   =========================================================== */
+document.getElementById("fileToolFormV2")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const form = e.target;
+  const fileInput = form.querySelector("#fileInputV2");
+  const outputFormat = form.querySelector("#outputFormatV2").value;
+  const renameTo = form.querySelector("#renameToV2").value;
+  const watermark = form.querySelector("#watermarkV2").value;
+  const compressOnly = form.querySelector("#compressOnlyV2").checked;
+
+  if (!fileInput.files.length) return alert("Please select a file first.");
+
+  const formData = new FormData();
+  formData.append("file", fileInput.files[0]);
+  formData.append("outputFormat", outputFormat);
+  formData.append("renameTo", renameTo);
+  formData.append("watermark", watermark);
+  formData.append("compressOnly", compressOnly);
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v2/file/convert`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) throw new Error("Conversion failed.");
+    const blob = await res.blob();
+    const downloadUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = downloadUrl;
+    a.download = renameTo || `converted.${outputFormat}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } catch (err) {
+    console.error(err);
+    alert("File conversion failed.");
+  }
+});
+
+/* ===========================================================
+   2. IMAGE CONVERTER / THUMBNAIL GENERATOR
+   =========================================================== */
+document.getElementById("imageToolFormV2")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const form = e.target;
+  const imageInput = form.querySelector("#imageInputV2");
+  const format = form.querySelector("#formatV2").value;
+  const width = form.querySelector("#widthV2").value;
+  const height = form.querySelector("#heightV2").value;
+  const ratioPreset = form.querySelector("#ratioPresetV2").value;
+  const quality = form.querySelector("#qualityV2").value;
+  const bgColor = form.querySelector("#bgColorV2").value;
+  const textOverlay = form.querySelector("#textOverlayV2").value;
+
+  if (!imageInput.files.length) return alert("Please upload an image first.");
+
+  const formData = new FormData();
+  formData.append("image", imageInput.files[0]);
+  formData.append("format", format);
+  formData.append("width", width);
+  formData.append("height", height);
+  formData.append("ratioPreset", ratioPreset);
+  formData.append("quality", quality);
+  formData.append("bgColor", bgColor);
+  formData.append("textOverlay", textOverlay);
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v2/image/process`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) throw new Error("Image processing failed.");
+    const blob = await res.blob();
+    const downloadUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = downloadUrl;
+    a.download = `processed.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } catch (err) {
+    console.error(err);
+    alert("Image conversion failed.");
+  }
+});
+
+/* ===========================================================
+   3. ZIP / UNZIP TOOL
+   =========================================================== */
+
+// ZIP multiple files
+document.getElementById("zipToolFormV2")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const form = e.target;
+  const files = form.querySelector("#zipFilesV2").files;
+  if (!files.length) return alert("Select files to zip.");
+
+  const formData = new FormData();
+  for (let file of files) formData.append("files", file);
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v2/zip`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) throw new Error("Zipping failed.");
+    const blob = await res.blob();
+    const downloadUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = downloadUrl;
+    a.download = "archive.zip";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } catch (err) {
+    console.error(err);
+    alert("Zipping failed.");
+  }
+});
+
+// UNZIP
+document.getElementById("unzipToolFormV2")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const zipInput = document.getElementById("unzipFileV2");
+  if (!zipInput.files.length) return alert("Upload a ZIP file first.");
+
+  const formData = new FormData();
+  formData.append("zipfile", zipInput.files[0]);
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v2/unzip`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) throw new Error("Unzipping failed.");
+    const data = await res.json();
+
+    const resultContainer = document.getElementById("unzippedResultsV2");
+    resultContainer.innerHTML = "";
+    data.extracted.forEach((f) => {
+      const div = document.createElement("div");
+      div.innerHTML = `<a href="${API_BASE_URL}/uploads/${f.name}" download>${f.name}</a>`;
+      resultContainer.appendChild(div);
+    });
+
+    alert("Unzip complete. Files ready for download.");
+  } catch (err) {
+    console.error(err);
+    alert("Unzipping failed.");
+  }
+});
+
+// ------------------------------
+// END: EverToolbox v2 Frontend Tools
+// ------------------------------
+
    
