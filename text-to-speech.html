@@ -126,24 +126,35 @@
 
 <!-- Output -->
 <div id="tts-output"></div>
-<script>
+    <script>
 const API_BASE = 'https://evertoolbox-backend.onrender.com';
 
-async function speakTextWithSelectedLang(langOverride = null) {
+async function speakTextWithSelectedLang() {
   const textArea = document.getElementById('tts-input');
   const langSelect = document.getElementById('tts-voices');
   const output = document.getElementById('tts-output');
   const text = textArea.value.trim();
-  const lang = langOverride || langSelect.value;
+  const lang = langSelect.value;
 
-  output.innerHTML = ''; // clear old output
+  output.innerHTML = '';
 
   if (!text) {
     output.innerHTML = `<p style="color:red">⚠️ Please enter some text first.</p>`;
     return;
   }
 
-  output.innerHTML = `<em>Generating audio for <strong>${lang}</strong>… Please wait.</em>`;
+  // Spinner while processing
+  output.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="width:20px;height:20px;border:3px solid #ccc;
+                  border-top-color:#007bff;border-radius:50%;
+                  animation: spin 1s linear infinite;"></div>
+      <em>Generating audio for ${lang}… Please wait.</em>
+    </div>
+    <style>
+      @keyframes spin { from {transform: rotate(0deg);} to {transform: rotate(360deg);} }
+    </style>
+  `;
 
   try {
     const resp = await fetch(`${API_BASE}/api/tts`, {
@@ -152,26 +163,34 @@ async function speakTextWithSelectedLang(langOverride = null) {
       body: JSON.stringify({ text, lang }),
     });
 
+    // If backend error
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}));
       throw new Error(err.error || `Server returned ${resp.status}`);
     }
 
     const contentType = resp.headers.get('content-type') || '';
-    if (!contentType.includes('audio')) throw new Error('No audio file returned.');
-
     const blob = await resp.blob();
-    if (!blob.size) throw new Error('Empty audio response.');
 
-    // Build audio player
-    const audioURL = URL.createObjectURL(blob);
+    // ❗ Detect unsupported languages (empty or invalid audio)
+    if (!contentType.includes('audio') || blob.size < 2000) {
+      output.innerHTML = `
+        <p style="color:red">
+          ⚠️ Sorry, the selected language (<strong>${lang}</strong>) is not supported yet.<br>
+          Please try a different one.
+        </p>`;
+      return;
+    }
+
+    // Create playback + download
+    const url = URL.createObjectURL(blob);
     const audio = document.createElement('audio');
     audio.controls = true;
     audio.autoplay = true;
-    audio.src = audioURL;
+    audio.src = url;
 
     const downloadLink = document.createElement('a');
-    downloadLink.href = audioURL;
+    downloadLink.href = url;
     downloadLink.download = `tts-${lang}.mp3`;
     downloadLink.textContent = '⬇️ Download Audio';
     downloadLink.style.marginLeft = '10px';
@@ -181,20 +200,16 @@ async function speakTextWithSelectedLang(langOverride = null) {
     output.appendChild(document.createElement('br'));
     output.appendChild(downloadLink);
 
-    // Clean up blob URL later
-    setTimeout(() => URL.revokeObjectURL(audioURL), 60000);
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
 
   } catch (error) {
     console.error('TTS Error:', error);
-
     output.innerHTML = `
       <p style="color:red">
-        ⚠️ Sorry, we couldn’t generate speech for <strong>${lang}</strong>.<br>
-        This may mean that the language isn’t supported yet.
-      </p>
-    `;
-
-    // Add fallback button
+        ⚠️ Could not generate audio for <strong>${lang}</strong>.<br>
+        It may not be supported or your connection failed.
+      </p>`;
+   // Add fallback button
     const fallbackBtn = document.createElement('button');
     fallbackBtn.textContent = '🔁 Try English fallback';
     fallbackBtn.style.marginTop = '10px';
@@ -203,12 +218,8 @@ async function speakTextWithSelectedLang(langOverride = null) {
   }
 }
 
-document.getElementById('tts-speak')
-  .addEventListener('click', () => speakTextWithSelectedLang());
-</script>
-   
-        
-   
+document.getElementById('tts-speak').addEventListener('click', speakTextWithSelectedLang);
+  </script>
    
   </p>
     </article>  
