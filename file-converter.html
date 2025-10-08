@@ -96,77 +96,86 @@
   <script>
   //const API_BASE = "https://evertoolbox-backend.onrender.com";
   
-const API_BASE_URL = window.API_BASE_URL || "https://evertoolbox-backend.onrender.com";
-    
-    
-  const form = document.getElementById('fileConvertForm');
-  const convertBtn = document.getElementById('convertBtn');
-  const fileInput = document.getElementById('fileInput');
-  const targetFormat = document.getElementById('targetFormat');
-  const compressOnly = document.getElementById('compressOnly');
-  const previewArea = document.getElementById('previewArea');
-  const previewContainer = document.getElementById('previewContainer');
-  const resultArea = document.getElementById('resultArea');
-  const downloadLink = document.getElementById('downloadLink');
+  // ✅ Define API URL fallback (no more "not defined" errors)
+  const API_BASE_URL = window.API_BASE_URL || "https://evertoolbox-backend.onrender.com";
 
-  // Handle Convert / Compress
-  convertBtn.addEventListener('click', async () => {
-    const file = fileInput.files[0];
-    if (!file) return alert('Please choose a file first');
-    const format = targetFormat.value;
-    const isCompress = compressOnly.checked;
+  document.addEventListener("DOMContentLoaded", () => {
+    const form = document.getElementById('fileConvertForm');
+    const convertBtn = document.getElementById('convertBtn');
+    const fileInput = document.getElementById('fileInput');
+    const targetFormat = document.getElementById('targetFormat');
+    const compressOnly = document.getElementById('compressOnly');
+    const previewArea = document.getElementById('previewArea');
+    const previewContainer = document.getElementById('previewContainer');
+    const resultArea = document.getElementById('resultArea');
+    const downloadLink = document.getElementById('downloadLink');
 
-    // Basic preview for images
-    if (file.type.startsWith('image/')) {
-      previewArea.style.display = 'block';
-      const img = document.createElement('img');
-      img.src = URL.createObjectURL(file);
-      img.style.maxWidth = '200px';
-      previewContainer.innerHTML = '';
-      previewContainer.appendChild(img);
-    }
+    form.addEventListener('submit', e => e.preventDefault());
 
-    convertBtn.disabled = true;
-    convertBtn.textContent = 'Processing...';
+    convertBtn.addEventListener('click', async () => {
+      const file = fileInput.files[0];
+      if (!file) {
+        alert('Please choose a file first');
+        return;
+      }
 
-    const formData = new FormData();
-    formData.append('file', file);
-    if (!isCompress) formData.append('targetFormat', format);
-    formData.append('compress', isCompress);
+      const format = targetFormat.value;
+      const isCompress = compressOnly.checked;
 
-    try {
-      const endpoint = isCompress
-        ? `${API_BASE_URL}/api/compress`
-        : `${API_BASE_URL}/api/convert`;
-
-      const response = await fetch(endpoint, { method: 'POST', body: formData });
-      if (!response.ok) throw new Error('Error processing file');
-
-      const blob = await response.blob();
-      const fileURL = URL.createObjectURL(blob);
-      const ext = isCompress ? 'zip' : format;
-      const fileName = `converted_${Date.now()}.${ext}`;
-
-      resultArea.style.display = 'block';
-      downloadLink.href = fileURL;
-      downloadLink.download = fileName;
-      downloadLink.textContent = `Download ${fileName}`;
-
-      // Show preview for image conversions
-      if (['png', 'jpg', 'jpeg'].includes(format)) {
+      // Basic image preview
+      if (file.type.startsWith('image/')) {
+        previewArea.style.display = 'block';
         const img = document.createElement('img');
-        img.src = fileURL;
+        img.src = URL.createObjectURL(file);
         img.style.maxWidth = '200px';
-        previewContainer.appendChild(document.createElement('hr'));
+        previewContainer.innerHTML = '';
         previewContainer.appendChild(img);
       }
-    } catch (err) {
-      alert('⚠️ ' + err.message);
-    } finally {
-      convertBtn.disabled = false;
-      convertBtn.textContent = 'Convert / Compress';
-    }
+
+      convertBtn.disabled = true;
+      convertBtn.textContent = 'Processing...';
+
+      const formData = new FormData();
+      formData.append('file', file);
+      if (!isCompress) formData.append('targetFormat', format);
+      formData.append('compress', isCompress);
+
+      try {
+        const endpoint = isCompress
+          ? `${API_BASE_URL}/api/compress`
+          : `${API_BASE_URL}/api/convert`;
+
+        console.log("Sending to:", endpoint);
+        const response = await fetch(endpoint, { method: 'POST', body: formData });
+        if (!response.ok) throw new Error('Error processing file');
+
+        const blob = await response.blob();
+        const fileURL = URL.createObjectURL(blob);
+        const ext = isCompress ? 'zip' : format;
+        const fileName = `converted_${Date.now()}.${ext}`;
+
+        resultArea.style.display = 'block';
+        downloadLink.href = fileURL;
+        downloadLink.download = fileName;
+        downloadLink.textContent = `Download ${fileName}`;
+
+        if (['png', 'jpg', 'jpeg'].includes(format)) {
+          const img = document.createElement('img');
+          img.src = fileURL;
+          img.style.maxWidth = '200px';
+          previewContainer.appendChild(document.createElement('hr'));
+          previewContainer.appendChild(img);
+        }
+
+      } catch (err) {
+        console.error("Conversion error:", err);
+        alert('⚠️ ' + err.message);
+      } finally {
+        convertBtn.disabled = false;
+        convertBtn.textContent = 'Convert / Compress';
+      }
+    });
   });
-  </script>
-</body>
+</script>
+  </body>
 </html>
