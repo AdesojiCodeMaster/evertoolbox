@@ -1,9 +1,10 @@
+<!--
 <!doctype html><html lang='en'><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="EverToolbox — fast, free, and elegant web utilities for creators.">
 <!-- GA4 placeholder: G-XXXXXXXXXX -->
 <!-- Search Console verification placeholder --><title>File Converter — EverToolbox</title><link rel='stylesheet' href='style.css'></head><body><header id="site-header" class="site-header" role="banner">
-  <div class="container header-inner">
+  <!-- <div class="container header-inner">
     <a class="brand" href="index.html" aria-label="EverToolbox home">
       <div class="logo">ET</div>
       <div class="brand-text"><span class="brand-name">EverToolbox</span><small class="muted">Smart web utilities</small></div>
@@ -36,8 +37,8 @@
     <article class='card'>
       <h1>File Converter & Compressor</h1>
 <!-- ================= FILE CONVERTER TOOL START ================= -->
+  <!--
 <section id="file-converter-tool" class="tool-section">
-
   <form id="fileConvertForm" onsubmit="return false;">
     <div class="form-group">
       <label for="fileInput">Choose file:</label>
@@ -178,4 +179,113 @@
   });
 </script>
   </body>
+</html> -->
+
+
+  
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EverToolbox File Converter Test</title>
+</head>
+<body>
+  <h2>File Converter Backend Test</h2>
+  <form id="testForm">
+    <label>
+      Choose file:
+      <input type="file" id="fileInput" name="file" required />
+    </label>
+    <br><br>
+
+    <label>
+      Output format:
+      <select id="outputFormat" name="outputFormat" required>
+        <option value="">Select format</option>
+        <option value="pdf">PDF</option>
+        <option value="docx">DOCX</option>
+        <option value="txt">TXT</option>
+        <option value="png">PNG</option>
+        <option value="jpg">JPG</option>
+        <option value="zip">ZIP</option>
+      </select>
+    </label>
+    <br><br>
+
+    <label>
+      Watermark (optional):
+      <input type="text" id="watermark" name="watermark" />
+    </label>
+    <br><br>
+
+    <label>
+      <input type="checkbox" id="compressOnly" name="compressOnly" />
+      Compress only
+    </label>
+    <br><br>
+
+    <label>
+      Rename to (optional):
+      <input type="text" id="renameTo" name="renameTo" placeholder="newname.pdf" />
+    </label>
+    <br><br>
+
+    <button type="submit">Convert / Compress</button>
+  </form>
+
+  <p id="status"></p>
+  <div id="downloadArea" style="display:none;">
+    <h3>Download Result:</h3>
+    <a id="downloadLink" href="#" download>Download Converted File</a>
+  </div>
+
+  <script>
+    const API_URL = "https://evertoolbox-backend.onrender.com/api/v3/file/convert";
+    const form = document.getElementById("testForm");
+    const status = document.getElementById("status");
+    const downloadArea = document.getElementById("downloadArea");
+    const downloadLink = document.getElementById("downloadLink");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      status.textContent = "Uploading and converting... please wait.";
+      downloadArea.style.display = "none";
+
+      const fileInput = document.getElementById("fileInput");
+      const outputFormat = document.getElementById("outputFormat").value;
+      const watermark = document.getElementById("watermark").value;
+      const compressOnly = document.getElementById("compressOnly").checked;
+      const renameTo = document.getElementById("renameTo").value;
+
+      if (!fileInput.files.length) {
+        status.textContent = "Please select a file first.";
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", fileInput.files[0]);
+      formData.append("outputFormat", outputFormat);
+      formData.append("watermark", watermark);
+      formData.append("compressOnly", compressOnly);
+      formData.append("renameTo", renameTo);
+
+      try {
+        const res = await fetch(API_URL, { method: "POST", body: formData });
+        if (!res.ok) throw new Error("Conversion failed or unsupported format.");
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        downloadLink.href = url;
+        downloadLink.download = renameTo || `converted.${outputFormat}`;
+        downloadArea.style.display = "block";
+        status.textContent = "Conversion successful!";
+      } catch (err) {
+        console.error(err);
+        status.textContent = "❌ Error: " + err.message;
+      }
+    });
+  </script>
+</body>
 </html>
+
