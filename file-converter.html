@@ -94,8 +94,11 @@
   <script src='script.js'> </script>  
 
   <script>
-  const API_BASE = "https://evertoolbox-backend.onrender.com";
+  //const API_BASE = "https://evertoolbox-backend.onrender.com";
   
+const API_BASE_URL = window.API_BASE_URL || "https://evertoolbox-backend.onrender.com";
+    
+    
   const form = document.getElementById('fileConvertForm');
   const convertBtn = document.getElementById('convertBtn');
   const fileInput = document.getElementById('fileInput');
