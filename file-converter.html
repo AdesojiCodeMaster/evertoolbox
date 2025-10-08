@@ -41,440 +41,132 @@
      Paste into your file-converter page
      ========================= -->
 
-<section id="ft-file-converter-final" class="ft-tool" aria-label="File converter">
-  <style>
-    /* Scoped minimal styling (blue-accent) */
-    #ft-file-converter-final { max-width:980px; margin:18px auto; padding:18px; border-radius:12px; background:#fff; box-shadow:0 8px 28px rgba(2,6,23,0.06); font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; color:#0f172a }
-    #ft-file-converter-final .head { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
-    #ft-file-converter-final h2 { margin:0; font-size:1.25rem; color:#0b5ed7 }
-    #ft-file-converter-final .sub { color:#475569; font-size:0.92rem }
-    .ft-row { display:flex; gap:12px; align-items:flex-start; margin-top:12px; flex-wrap:wrap }
-    .ft-left { flex:1; min-width:260px }
-    .ft-right { width:320px; min-width:240px }
-    .drop { padding:14px; border:2px dashed #dbeafe; border-radius:10px; text-align:center; cursor:pointer; background:linear-gradient(180deg, rgba(11,94,215,0.02), transparent) }
-    .small { font-size:0.9rem; color:#64748b }
-    .control { margin-top:10px }
-    .control label { display:block; font-size:0.9rem; color:#334155; margin-bottom:6px }
-    select,input[type="text"],input[type="range"]{width:100%; padding:8px; border-radius:8px; border:1px solid #e6eef8 }
-    .actions { display:flex; gap:8px; margin-top:10px }
-    .btn { padding:9px 12px; border-radius:8px; border:none; cursor:pointer; font-weight:600 }
-    .btn-primary { background:#0b5ed7; color:#fff }
-    .btn-ghost { background:transparent; border:1px solid #cbd5e1; color:#0f172a }
-    .preview { margin-top:14px; display:flex; gap:12px; flex-wrap:wrap }
-    .box { flex:1; min-width:200px; background:#fbfdff; padding:10px; border-radius:8px; border:1px solid #e6eef8 }
-    .box h4 { margin:0 0 8px 0; font-size:0.95rem }
-    .muted { color:#6b7280; font-size:0.9rem }
-    .hidden{display:none}
-    .spinner { width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin .9s linear infinite;display:inline-block;margin-left:8px;vertical-align:middle }
-    @keyframes spin { to { transform: rotate(360deg) } }
-    .link-list a{display:block;padding:6px 0;border-bottom:1px dashed #eef2ff;color:#0b5ed7}
-    @media (max-width:680px){ .ft-right{width:100%} .ft-row{flex-direction:column} }
-  </style>
+      <section id="file-converter-tool" class="tool-section card">
+  <h2 class="tool-title">File Converter & Compressor</h2>
 
-  <div class="head">
-    <div>
-      <h2>File Converter</h2>
-      <div class="sub">Convert, compress and finalize files — preview and download directly.</div>
+  <form id="fileConvertForm" onsubmit="return false;">
+    <div class="form-group">
+      <label for="fileInput">Choose file:</label>
+      <input type="file" id="fileInput" required />
     </div>
-    <div id="ft-status" class="small">Ready</div>
+
+    <div class="form-group">
+      <label for="targetFormat">Convert to:</label>
+      <select id="targetFormat">
+        <option value="">Select format</option>
+        <option value="pdf">PDF</option>
+        <option value="docx">DOCX</option>
+        <option value="txt">TXT</option>
+        <option value="jpg">JPG</option>
+        <option value="png">PNG</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label><input type="checkbox" id="compressOnly" /> Compress only (no conversion)</label>
+    </div>
+
+    <button id="convertBtn" type="button" class="btn-primary">
+      <span id="btnText">Start Conversion</span>
+      <span id="spinner" class="spinner" style="display:none;"></span>
+    </button>
+  </form>
+
+  <div id="previewArea" class="preview-area" style="display:none;">
+    <h3>Preview</h3>
+    <img id="previewImage" style="max-width:100%;border-radius:8px;" />
   </div>
 
-  <div class="ft-row">
-    <div class="ft-left">
-      <label class="drop" id="ft-drop">
-        <div style="font-weight:600">Click or drop a file here</div>
-        <div class="small">Images and text work best for instant preview & client compression.</div>
-        <input id="ft-file-input" class="hidden" type="file" />
-      </label>
-
-      <div class="control" style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-        <div style="flex:1;min-width:200px">
-          <label for="ft-target">Convert to</label>
-          <select id="ft-target" aria-label="Convert to">
-            <option value="">(keep original / choose)</option>
-            <option value="pdf">PDF</option>
-            <option value="docx">DOCX</option>
-            <option value="txt">TXT</option>
-            <option value="png">PNG</option>
-            <option value="jpg">JPG</option>
-            <option value="webp">WEBP</option>
-          </select>
-        </div>
-
-        <div style="flex:1;min-width:180px">
-          <label for="ft-rename">Rename (optional)</label>
-          <input id="ft-rename" type="text" placeholder="newname.ext" />
-        </div>
-      </div>
-
-      <div class="control" style="display:flex;gap:12px;align-items:center;margin-top:10px;flex-wrap:wrap">
-        <label class="small"><input id="ft-compress-only" type="checkbox" /> Compress only (no conversion)</label>
-        <label class="small" style="margin-left:auto">Quality: <span id="ft-quality-value">90%</span></label>
-        <input id="ft-quality" type="range" min="20" max="100" value="90" style="width:160px"/>
-      </div>
-
-      <div class="control">
-        <label for="ft-watermark">Watermark (optional)</label>
-        <input id="ft-watermark" type="text" placeholder="© YourBrand" />
-      </div>
-
-      <div class="actions">
-        <button id="ft-start" class="btn btn-primary">Start conversion</button>
-        <button id="ft-clear" class="btn btn-ghost">Clear</button>
-        <div style="margin-left:auto" class="muted">Tip: images will compress client-side when Compress-only is active.</div>
-      </div>
-    </div>
-
-    <div class="ft-right">
-      <div class="box">
-        <h4>Preview — Before</h4>
-        <div id="ft-before" class="muted">No file selected.</div>
-      </div>
-
-      <div class="box" style="margin-top:12px">
-        <h4>Preview — After</h4>
-        <div id="ft-after" class="muted">No output yet.</div>
-      </div>
-    </div>
+  <div id="resultArea" class="result-area" style="display:none;">
+    <h3>Result</h3>
+    <a id="downloadLink" href="#" class="btn-primary">Download</a>
   </div>
+</section>
 
-  <div class="preview" id="ft-actions-row" style="display:none">
-    <div class="box" style="flex:1">
-      <h4>Result</h4>
-      <div id="ft-result-info" class="muted">—</div>
-      <div style="margin-top:8px">
-        <a id="ft-download" class="btn btn-primary hidden" href="#" download>Download</a>
-        <button id="ft-edit-final" class="btn btn-ghost hidden" type="button">Edit & Finalize</button>
-      </div>
-    </div>
+<script>
+const API_BASE_URL = "https://evertoolbox-backend.onrender.com";
 
-    <div class="box" style="width:260px">
-      <h4>Extras</h4>
-      <div id="ft-extras" class="small">—</div>
-    </div>
-  </div>
+const fileInput = document.getElementById("fileInput");
+const targetFormat = document.getElementById("targetFormat");
+const compressOnly = document.getElementById("compressOnly");
+const convertBtn = document.getElementById("convertBtn");
+const btnText = document.getElementById("btnText");
+const spinner = document.getElementById("spinner");
+const previewArea = document.getElementById("previewArea");
+const previewImage = document.getElementById("previewImage");
+const resultArea = document.getElementById("resultArea");
+const downloadLink = document.getElementById("downloadLink");
 
-  <!-- Include JSZip CDN to optionally extract single-file zips on client -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+fileInput.addEventListener("change", () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    if (file.type.startsWith("image/")) {
+      previewImage.src = e.target.result;
+      previewArea.style.display = "block";
+    } else {
+      previewArea.style.display = "none";
+    }
+  };
+  reader.readAsDataURL(file);
+});
 
-  <script>
-    (function () {
-      const API_BASE_URL = window.API_BASE_URL || "https://evertoolbox-backend.onrender.com";
+convertBtn.addEventListener("click", async () => {
+  const file = fileInput.files[0];
+  if (!file) return alert("Please select a file first.");
 
-      // Elements
-      const drop = document.getElementById("ft-drop");
-      const fileInput = document.getElementById("ft-file-input");
-      const before = document.getElementById("ft-before");
-      const after = document.getElementById("ft-after");
-      const status = document.getElementById("ft-status");
-      const startBtn = document.getElementById("ft-start");
-      const clearBtn = document.getElementById("ft-clear");
-      const target = document.getElementById("ft-target");
-      const rename = document.getElementById("ft-rename");
-      const watermark = document.getElementById("ft-watermark");
-      const compressOnly = document.getElementById("ft-compress-only");
-      const quality = document.getElementById("ft-quality");
-      const qualityValue = document.getElementById("ft-quality-value");
-      const actionsRow = document.getElementById("ft-actions-row");
-      const downloadBtn = document.getElementById("ft-download");
-      const editFinalBtn = document.getElementById("ft-edit-final");
-      const resultInfo = document.getElementById("ft-result-info");
-      const extras = document.getElementById("ft-extras");
+  const format = targetFormat.value;
+  const isCompressOnly = compressOnly.checked;
 
-      let currentFile = null;
-      let currentResultBlob = null;
-      let currentResultName = "";
+  convertBtn.disabled = true;
+  btnText.textContent = "Processing...";
+  spinner.style.display = "inline-block";
 
-      // Helpers
-      function kb(n) { return `${Math.round(n/1024)} KB`; }
+  try {
+    let blob;
+    // Client-side image compression
+    if (isCompressOnly && file.type.startsWith("image/")) {
+      const img = await createImageBitmap(file);
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+      const quality = 0.7; // compression ratio
+      const mime = file.type;
+      const compressedBlob = await new Promise(r => canvas.toBlob(r, mime, quality));
+      blob = compressedBlob;
+    } else {
+      // Server-side conversion/compression
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("outputFormat", format || "");
+      formData.append("compressOnly", isCompressOnly);
 
-      quality.addEventListener("input", () => { qualityValue.textContent = quality.value + "%"; });
+      const res = await fetch(`${API_BASE_URL}/api/v3/file/convert`, { method: "POST", body: formData });
+      if (!res.ok) throw new Error("Conversion failed");
+      blob = await res.blob();
+    }
 
-      // Drag & click
-      drop.addEventListener("click", () => fileInput.click());
-      drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.style.borderColor = "#93c5fd"; });
-      drop.addEventListener("dragleave", () => { drop.style.borderColor = ""; });
-      drop.addEventListener("drop", (e) => {
-        e.preventDefault();
-        drop.style.borderColor = "";
-        const f = e.dataTransfer.files && e.dataTransfer.files[0];
-        if (f) selectFile(f);
-      });
+    const url = URL.createObjectURL(blob);
+    resultArea.style.display = "block";
+    downloadLink.href = url;
+    const name = file.name.split(".")[0];
+    const ext = isCompressOnly ? file.name.split(".").pop() : (format || file.name.split(".").pop());
+    downloadLink.download = `${name}_processed.${ext}`;
 
-      fileInput.addEventListener("change", (e) => {
-        const f = e.target.files && e.target.files[0];
-        if (f) selectFile(f);
-      });
-
-      function selectFile(file) {
-        currentFile = file;
-        currentResultBlob = null;
-        currentResultName = "";
-        status.textContent = `Selected: ${file.name} (${kb(file.size)})`;
-        renderBefore(file);
-        after.innerHTML = "<div class='muted'>No output yet</div>";
-        actionsRow.style.display = "none";
-      }
-
-      function renderBefore(file) {
-        before.innerHTML = "";
-        if (file.type.startsWith("image/")) {
-          const img = document.createElement("img");
-          img.src = URL.createObjectURL(file);
-          img.style.maxWidth = "100%";
-          before.appendChild(img);
-        } else if (file.type.startsWith("text/")) {
-          const r = new FileReader();
-          r.onload = () => { const pre = document.createElement("pre"); pre.textContent = String(r.result).slice(0, 500); before.appendChild(pre); };
-          r.readAsText(file);
-        } else if (file.type === "application/pdf") {
-          const ifr = document.createElement("iframe"); ifr.src = URL.createObjectURL(file); ifr.style.height = "220px"; before.appendChild(ifr);
-        } else {
-          before.textContent = `${file.name} — ${kb(file.size)}`;
-        }
-      }
-
-      // Client-side image compression (compress-only for images)
-      async function compressImageClientSide(file, qPercent, watermarkText) {
-        // create image element then canvas
-        return new Promise((resolve, reject) => {
-          const img = new Image();
-          img.crossOrigin = "anonymous";
-          img.onload = () => {
-            try {
-              const canvas = document.createElement("canvas");
-              canvas.width = img.naturalWidth;
-              canvas.height = img.naturalHeight;
-              const ctx = canvas.getContext("2d");
-              ctx.drawImage(img, 0, 0);
-              if (watermarkText) {
-                const fontSize = Math.max(16, Math.round(canvas.width * 0.03));
-                ctx.font = `${fontSize}px sans-serif`;
-                ctx.fillStyle = "rgba(255,255,255,0.7)";
-                ctx.textAlign = "center";
-                ctx.fillText(watermarkText, canvas.width/2, canvas.height - (fontSize*1.5));
-              }
-              const mime = file.type === "image/png" ? "image/png" : "image/jpeg";
-              const q = Math.max(0.1, Math.min(1, qPercent/100));
-              canvas.toBlob((blob) => {
-                if (!blob) return reject(new Error("Compression failed"));
-                resolve(blob);
-              }, mime, q);
-            } catch (e) { reject(e); }
-          };
-          img.onerror = (e) => reject(new Error("Failed to load image for compression"));
-          img.src = URL.createObjectURL(file);
-        });
-      }
-
-      // Main handler
-      startBtn.addEventListener("click", async () => {
-        if (!currentFile) { alert("Please choose a file first."); return; }
-
-        // disable UI and show spinner
-        startBtn.disabled = true;
-        const sp = document.createElement("span"); sp.className = "spinner"; startBtn.appendChild(sp);
-        status.textContent = "Processing...";
-
-        try {
-          // If compress-only and image -> compress client-side and present download
-          if (compressOnly.checked && currentFile.type.startsWith("image/")) {
-            const q = parseInt(quality.value, 10) || 90;
-            const wm = watermark.value?.trim() || "";
-            const compressedBlob = await compressImageClientSide(currentFile, q, wm);
-            currentResultBlob = compressedBlob;
-            const suggestedName = (rename.value && rename.value.trim()) || (currentFile.name);
-            currentResultName = suggestedName.includes('.') ? suggestedName : suggestedName.replace(/\.[^/.]+$/, '') + '.' + (currentFile.type === 'image/png' ? 'png' : 'jpg');
-
-            // show after preview
-            after.innerHTML = "";
-            const img = document.createElement("img"); img.src = URL.createObjectURL(compressedBlob); after.appendChild(img);
-
-            // prepare download
-            downloadBtn.href = URL.createObjectURL(compressedBlob);
-            downloadBtn.download = currentResultName;
-            downloadBtn.classList.remove("hidden");
-            editFinalBtn.classList.remove("hidden"); // offer final edit step if desired
-            actionsRow.style.display = "flex";
-            resultInfo.textContent = `Compressed image • ${kb(compressedBlob.size)}`;
-            extras.innerHTML = "Client-side compression (no upload).";
-            status.textContent = "Done (client-side image compression)";
-            currentFile = currentFile; // keep original
-            return;
-          }
-
-          // Otherwise send to server (conversion or compression for non-image)
-          const fd = new FormData();
-          fd.append("file", currentFile);
-          fd.append("outputFormat", target.value || "");
-          fd.append("compressOnly", compressOnly.checked ? "true" : "false");
-          fd.append("watermark", watermark.value || "");
-          fd.append("renameTo", rename.value || "");
-
-          const resp = await fetch(`${API_BASE_URL}/api/v3/file/convert`, { method: "POST", body: fd });
-
-          if (!resp.ok) {
-            const txt = await resp.text().catch(() => null);
-            throw new Error(txt || `Server ${resp.status}`);
-          }
-
-          // got response blob — could be direct file or zip
-          const contentType = resp.headers.get("content-type") || "";
-          const disposition = resp.headers.get("content-disposition") || "";
-          let filename = "";
-          const m = disposition.match(/filename="?([^";]+)"?/);
-          if (m) filename = m[1];
-
-          const blob = await resp.blob();
-
-          // If server returned a zip, try to extract single-file zips with JSZip
-          if (contentType.includes("zip") || (filename && filename.toLowerCase().endsWith(".zip"))) {
-            if (typeof JSZip === "undefined") {
-              // no JSZip loaded; provide zip download
-              downloadBtn.href = URL.createObjectURL(blob);
-              downloadBtn.download = filename || "archive.zip";
-              downloadBtn.classList.remove("hidden");
-              resultInfo.textContent = `Server returned a zip (${kb(blob.size)}) — download to inspect.`;
-              extras.innerHTML = "Server produced ZIP. Multiple files may be inside.";
-            } else {
-              // extract with JSZip
-              const zip = await JSZip.loadAsync(await blob.arrayBuffer());
-              const files = Object.keys(zip.files);
-              if (files.length === 1) {
-                const f = zip.files[files[0]];
-                const extracted = await f.async("uint8array");
-                const outBlob = new Blob([extracted], { type: "application/octet-stream" });
-                currentResultBlob = outBlob;
-                currentResultName = rename.value || f.name;
-                downloadBtn.href = URL.createObjectURL(outBlob);
-                downloadBtn.download = currentResultName;
-                downloadBtn.classList.remove("hidden");
-
-                // preview if possible
-                const ext = (f.name.split(".").pop() || "").toLowerCase();
-                after.innerHTML = "";
-                if (ext === "pdf") {
-                  const ifr = document.createElement("iframe"); ifr.src = URL.createObjectURL(outBlob); ifr.style.height = "300px"; after.appendChild(ifr);
-                } else if (["png","jpg","jpeg","webp"].includes(ext)) {
-                  const img = document.createElement("img"); img.src = URL.createObjectURL(outBlob); after.appendChild(img);
-                } else if (ext === "txt") {
-                  const t = await outBlob.text(); const pre = document.createElement("pre"); pre.textContent = t.slice(0,1000); after.appendChild(pre);
-                } else {
-                  after.textContent = f.name;
-                }
-
-                resultInfo.textContent = `Extracted single file • ${kb(outBlob.size)}`;
-                extras.innerHTML = "Single file extracted from zip — direct download provided.";
-              } else {
-                // multiple files: list them
-                after.innerHTML = "<div class='muted'>ZIP contains multiple files:</div><div class='link-list'></div>";
-                const container = after.querySelector(".link-list");
-                container.innerHTML = "";
-                for (let name of files) {
-                  const fileObj = zip.files[name];
-                  const u8 = await fileObj.async("uint8array");
-                  const b = new Blob([u8], { type: "application/octet-stream" });
-                  const url = URL.createObjectURL(b);
-                  const a = document.createElement("a");
-                  a.href = url; a.textContent = name; a.download = name;
-                  container.appendChild(a);
-                }
-                extras.innerHTML = "Multiple files in archive — download each link.";
-                downloadBtn.classList.add("hidden");
-              }
-            }
-          } else {
-            // direct file blob
-            currentResultBlob = blob;
-            currentResultName = filename || (rename.value || (`converted.${target.value || currentFile.name.split('.').pop()}`));
-            downloadBtn.href = URL.createObjectURL(blob);
-            downloadBtn.download = currentResultName;
-            downloadBtn.classList.remove("hidden");
-
-            // preview if possible
-            after.innerHTML = "";
-            if (contentType.includes("pdf") || currentResultName.toLowerCase().endsWith(".pdf")) {
-              const ifr = document.createElement("iframe"); ifr.src = URL.createObjectURL(blob); ifr.style.height = "300px"; after.appendChild(ifr);
-            } else if (blob.type.startsWith("image/") || ["png","jpg","jpeg","webp"].includes(currentResultName.split('.').pop().toLowerCase())) {
-              const img = document.createElement("img"); img.src = URL.createObjectURL(blob); after.appendChild(img);
-            } else if (blob.type.startsWith("text/") || currentResultName.toLowerCase().endsWith(".txt")) {
-              const t = await blob.text(); const pre = document.createElement("pre"); pre.textContent = t.slice(0,1000); after.appendChild(pre);
-            } else {
-              after.textContent = currentResultName;
-            }
-            resultInfo.textContent = `Result: ${currentResultName} — ${kb(blob.size)}`;
-            extras.innerHTML = "Direct file download available.";
-            actionsRow.style.display = "flex";
-          }
-
-          status.textContent = "Conversion complete";
-        } catch (err) {
-          console.error("ft final error:", err);
-          status.textContent = "Error: " + (err.message || "Processing failed");
-          alert("Conversion failed: " + (err.message || "Server error"));
-        } finally {
-          startBtn.disabled = false;
-          const sp = startBtn.querySelector(".spinner"); if (sp) sp.remove();
-          startBtn.textContent = "Start conversion";
-        }
-      });
-
-      // Edit & finalize (send finalization to server if needed)
-      editFinalBtn.addEventListener("click", async () => {
-        if (!currentResultBlob) return alert("No result to finalize.");
-        // If user changes watermark/rename, send result blob back to server for final stamping
-        const finalName = prompt("Final filename", (rename.value || currentResultName) || "final.bin");
-        const finalWater = prompt("Watermark text (leave empty to skip)", watermark.value || "");
-        if (finalName === null) return;
-
-        editFinalBtn.disabled = true;
-        editFinalBtn.textContent = "Finalizing…";
-
-        try {
-          const fd = new FormData();
-          fd.append("file", currentResultBlob, currentResultName || finalName);
-          fd.append("renameTo", finalName);
-          fd.append("watermark", finalWater || "");
-          fd.append("compressOnly", "false");
-
-          const r = await fetch(`${API_BASE_URL}/api/v3/file/convert`, { method: "POST", body: fd });
-          if (!r.ok) {
-            const t = await r.text().catch(()=>null);
-            throw new Error(t || `Server ${r.status}`);
-          }
-          const blob = await r.blob();
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a"); a.href = url; a.download = finalName; document.body.appendChild(a); a.click(); a.remove();
-        } catch (err) {
-          console.error("finalize error:", err);
-          alert("Finalization failed: " + (err.message || "server error"));
-        } finally {
-          editFinalBtn.disabled = false;
-          editFinalBtn.textContent = "Edit & Finalize";
-        }
-      });
-
-      clearBtn.addEventListener("click", () => {
-        currentFile = null;
-        currentResultBlob = null;
-        currentResultName = "";
-        fileInput.value = "";
-        before.innerHTML = "No file selected.";
-        after.innerHTML = "No output yet.";
-        actionsRow.style.display = "none";
-        downloadBtn.classList.add("hidden");
-        editFinalBtn.classList.add("hidden");
-        status.textContent = "Ready";
-        extras.innerHTML = "—";
-      });
-
-      // initial UI
-      startBtn.textContent = "Start conversion";
-    })();
+  } catch (err) {
+    console.error(err);
+    alert("File conversion or compression failed.");
+  } finally {
+    convertBtn.disabled = false;
+    btnText.textContent = "Start Conversion";
+    spinner.style.display = "none";
+  }
+});
   </script>
-    </section>
-  
-  </article>
+   </article>
   </main>
   <footer id="site-footer" class="site-footer" role="contentinfo">
   <div class="container footer-inner">
@@ -489,9 +181,7 @@
   </div>
 </footer>
   <script src='script.js'> </script>  
-
-  
-  </body>
+</body>
 </html> 
 
 
