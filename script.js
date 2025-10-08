@@ -872,7 +872,7 @@ document.getElementById("unzipToolFormV2")?.addEventListener("submit", async (e)
    =========================================================== */
 
 async function convertFile() {
-  const API_BASE_URL = window.API_BASE_URL || "https://your-backend-name.onrender.com"; // Update this to your Render backend URL
+  const API_BASE_URL = window.API_BASE_URL || "https://evertoolbox-backend.onrender.com"; // Update this to your Render backend URL
 
   const fileInput = document.getElementById("fileInput");
   const targetFormat = document.getElementById("targetFormat").value;
@@ -919,7 +919,7 @@ async function convertFile() {
   formData.append("compressOnly", compressOnly);
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v2/file/convert`, {
+    const response = await fetch(`${API_BASE_URL}/api/v3/file/convert`, {
       method: "POST",
       body: formData,
     });
