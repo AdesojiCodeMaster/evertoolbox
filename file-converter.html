@@ -39,141 +39,131 @@
   <!-- ==============================
      FILE CONVERTER + COMPRESSOR
      ============================== -->
+
 <section id="file-converter-tool" class="tool-section">
+<h2 class="tool-subtitle">Easily convert or compress files directly in your browser.</h2>
+  
 
-  <h2 class="tool-title">File Converter & Compressor</h2>
-  <p class="tool-subtitle">Easily convert or compress files directly in your browser.</p>
-
-  <form id="fileToolForm" onsubmit="return false;" class="tool-form">
+  <form id="fileToolForm">
     <div class="form-group">
-      <label for="fileInput" class="form-label">Choose File:</label>
-      <input type="file" id="fileInput" required class="form-control" />
+      <label for="fileInput">Choose file:</label>
+      <input type="file" id="fileInput" required />
     </div>
 
     <div class="form-group">
-      <label for="targetFormat" class="form-label">Convert To:</label>
-      <select id="targetFormat" class="form-control">
+      <label for="outputFormat">Convert to:</label>
+      <select id="outputFormat">
         <option value="">Select format</option>
         <option value="pdf">PDF</option>
         <option value="docx">DOCX</option>
-        <option value="txt">TXT</option>
         <option value="png">PNG</option>
         <option value="jpg">JPG</option>
+        <option value="txt">TXT</option>
       </select>
     </div>
 
-    <div class="btn-group">
-      <button id="convertBtn" type="button" class="btn-primary">Start Conversion</button>
-      <button id="compressBtn" type="button" class="btn-secondary">Compress File</button>
+    <div class="form-group">
+      <label for="watermark">Watermark (optional):</label>
+      <input type="text" id="watermark" placeholder="e.g. © EverToolbox" />
+    </div>
+
+    <div class="form-group">
+      <label for="renameTo">Rename to (optional):</label>
+      <input type="text" id="renameTo" placeholder="e.g. myfile.pdf" />
+    </div>
+
+    <div class="button-row">
+      <button type="button" id="convertBtn" class="btn-primary">Start Conversion</button>
+      <button type="button" id="compressBtn" class="btn-secondary">Compress File</button>
     </div>
   </form>
 
-  <div id="previewArea" class="preview-area" style="display:none;">
-    <h3>Preview:</h3>
-    <div id="previewContainer"></div>
+  <div id="statusArea" class="status-area" style="display:none;">
+    <p id="statusText">Processing...</p>
   </div>
 
   <div id="resultArea" class="result-area" style="display:none;">
     <h3>Result:</h3>
-    <p id="sizeInfo" class="size-info"></p>
+    <p id="fileInfo"></p>
     <a id="downloadLink" href="#" download class="download-btn">Download File</a>
   </div>
 </section>
 
 <script>
-const API_BASE_URL = "https://evertoolbox-backend.onrender.com";
+  const API_BASE_URL = "https://evertoolbox-backend.onrender.com"; // keep this correct
 
-// Reusable preview helper
-function showPreview(file) {
-  const previewArea = document.getElementById("previewArea");
-  const previewContainer = document.getElementById("previewContainer");
-  previewContainer.innerHTML = "";
-
-  if (file && file.type.startsWith("image/")) {
-    const img = document.createElement("img");
-    img.src = URL.createObjectURL(file);
-    img.style.maxWidth = "200px";
-    img.style.borderRadius = "8px";
-    img.style.marginTop = "10px";
-    previewContainer.appendChild(img);
-  } else {
-    const info = document.createElement("p");
-    info.textContent = `File selected: ${file.name}`;
-    previewContainer.appendChild(info);
-  }
-
-  previewArea.style.display = "block";
-}
-
-// Get readable file size
-function formatSize(bytes) {
-  if (bytes < 1024) return bytes + " B";
-  const units = ["KB", "MB", "GB"];
-  let i = -1;
-  do { bytes /= 1024; i++; } while (bytes >= 1024 && i < units.length - 1);
-  return bytes.toFixed(1) + " " + units[i];
-}
-
-// Common file handler
-async function handleFile(action) {
   const fileInput = document.getElementById("fileInput");
-  const targetFormat = document.getElementById("targetFormat").value;
+  const outputFormat = document.getElementById("outputFormat");
+  const watermark = document.getElementById("watermark");
+  const renameTo = document.getElementById("renameTo");
+  const statusArea = document.getElementById("statusArea");
+  const statusText = document.getElementById("statusText");
   const resultArea = document.getElementById("resultArea");
   const downloadLink = document.getElementById("downloadLink");
-  const sizeInfo = document.getElementById("sizeInfo");
+  const fileInfo = document.getElementById("fileInfo");
 
-  if (!fileInput.files.length) return alert("Please select a file first.");
+  const showStatus = (msg) => {
+    statusText.textContent = msg;
+    statusArea.style.display = "block";
+  };
 
-  const file = fileInput.files[0];
-  showPreview(file);
+  const hideStatus = () => {
+    statusArea.style.display = "none";
+  };
 
-  const formData = new FormData();
-  formData.append("file", file);
-
-  let endpoint = "";
-  if (action === "convert") {
-    if (!targetFormat) return alert("Please select an output format first.");
-    formData.append("outputFormat", targetFormat);
-    endpoint = `${API_BASE_URL}/api/v3/file/convert`;
-  } else if (action === "compress") {
-    endpoint = `${API_BASE_URL}/api/v3/file/compress`;
-  }
-
-  // Add loading spinner
-  const btn = document.getElementById(action === "convert" ? "convertBtn" : "compressBtn");
-  const originalText = btn.textContent;
-  btn.disabled = true;
-  btn.textContent = "Processing...";
-
-  try {
-    const res = await fetch(endpoint, { method: "POST", body: formData });
-    if (!res.ok) throw new Error("Processing failed");
-
-    const blob = await res.blob();
-    const downloadUrl = URL.createObjectURL(blob);
-    const newFile = new File([blob], file.name, { type: blob.type });
-
-    const originalSize = formatSize(file.size);
-    const newSize = formatSize(blob.size);
-    sizeInfo.textContent = `Original: ${originalSize} → Result: ${newSize}`;
-
-    downloadLink.href = downloadUrl;
-    downloadLink.download = file.name.replace(/\.[^/.]+$/, "") + 
-      (action === "convert" ? `.${targetFormat}` : file.name.match(/\.[^/.]+$/)[0]);
-    
+  const showResult = (blob, filename, size) => {
+    const url = URL.createObjectURL(blob);
+    downloadLink.href = url;
+    downloadLink.download = filename;
+    fileInfo.textContent = `File ready: ${filename} (${(size / 1024).toFixed(2)} KB)`;
     resultArea.style.display = "block";
-  } catch (err) {
-    console.error(err);
-    alert("Error processing the file. Please try again.");
-  } finally {
-    btn.disabled = false;
-    btn.textContent = originalText;
-  }
-}
+  };
 
-document.getElementById("convertBtn").addEventListener("click", () => handleFile("convert"));
-document.getElementById("compressBtn").addEventListener("click", () => handleFile("compress"));
+  async function handleFile(action) {
+    if (!fileInput.files.length) return alert("Please select a file first.");
+    resultArea.style.display = "none";
+    showStatus("Processing... Please wait.");
+
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+    formData.append("renameTo", renameTo.value || "");
+    formData.append("watermark", watermark.value || "");
+
+    if (action === "convert") {
+      if (!outputFormat.value) return alert("Select a target format first.");
+      formData.append("outputFormat", outputFormat.value);
+    }
+
+    const endpoint =
+      action === "convert"
+        ? `${API_BASE_URL}/api/v3/file/convert`
+        : `${API_BASE_URL}/api/v3/file/compress`;
+
+    try {
+      const res = await fetch(endpoint, { method: "POST", body: formData });
+      if (!res.ok) throw new Error("Processing failed.");
+      const blob = await res.blob();
+      const size = blob.size;
+      const filename =
+        renameTo.value ||
+        (action === "convert"
+          ? `converted.${outputFormat.value}`
+          : `compressed_${fileInput.files[0].name}`);
+      hideStatus();
+      showResult(blob, filename, size);
+    } catch (err) {
+      hideStatus();
+      alert("Error processing the file. Please try again.");
+      console.error(err);
+    }
+  }
+
+  document.getElementById("convertBtn").addEventListener("click", () => handleFile("convert"));
+  document.getElementById("compressBtn").addEventListener("click", () => handleFile("compress"));
 </script>
+
+      
+
 
 <style>
 .tool-section {
