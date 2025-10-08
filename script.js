@@ -703,6 +703,7 @@ document.addEventListener('DOMContentLoaded', ()=> {
 /* ===========================================================
    1. FILE CONVERTER + COMPRESSION + WATERMARK
    =========================================================== */
+/*
 document.getElementById("fileToolFormV2")?.addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -742,10 +743,12 @@ document.getElementById("fileToolFormV2")?.addEventListener("submit", async (e) 
     alert("File conversion failed.");
   }
 });
+*/
 
 /* ===========================================================
    2. IMAGE CONVERTER / THUMBNAIL GENERATOR
    =========================================================== */
+
 document.getElementById("imageToolFormV2")?.addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -791,6 +794,8 @@ document.getElementById("imageToolFormV2")?.addEventListener("submit", async (e)
     alert("Image conversion failed.");
   }
 });
+
+
 
 /* ===========================================================
    3. ZIP / UNZIP TOOL
@@ -861,6 +866,88 @@ document.getElementById("unzipToolFormV2")?.addEventListener("submit", async (e)
     alert("Unzipping failed.");
   }
 });
+
+
+
+
+/* ===========================================================
+   FILE CONVERTER + COMPRESSION + PREVIEW + DOWNLOAD
+   =========================================================== */
+
+async function convertFile() {
+  const API_BASE_URL = window.API_BASE_URL || "https://your-backend-name.onrender.com"; // replace with your Render backend URL
+
+  const fileInput = document.getElementById("fileInput");
+  const targetFormat = document.getElementById("targetFormat").value;
+  const compressOnly = document.getElementById("compressOnly").checked;
+  const convertBtn = document.getElementById("convertBtn");
+
+  if (!fileInput.files.length) {
+    alert("Please select a file first.");
+    return;
+  }
+
+  // Show a simple loading state
+  convertBtn.disabled = true;
+  convertBtn.textContent = "Processing...";
+
+  // Preview if it's an image
+  const file = fileInput.files[0];
+  const preview = document.getElementById("previewArea");
+  const previewContainer = document.getElementById("previewContainer");
+  if (file && file.type.startsWith("image/")) {
+    const img = document.createElement("img");
+    img.src = URL.createObjectURL(file);
+    img.style.maxWidth = "220px";
+    img.style.borderRadius = "8px";
+    previewContainer.innerHTML = "";
+    previewContainer.appendChild(img);
+    preview.style.display = "block";
+  } else {
+    preview.style.display = "none";
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("outputFormat", targetFormat);
+  formData.append("compressOnly", compressOnly);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v2/file/convert`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) throw new Error("File conversion failed.");
+
+    // Handle file download
+    const blob = await response.blob();
+    const downloadUrl = URL.createObjectURL(blob);
+
+    const resultArea = document.getElementById("resultArea");
+    const downloadLink = document.getElementById("downloadLink");
+    downloadLink.href = downloadUrl;
+
+    let suggestedName = "converted";
+    if (compressOnly) {
+      suggestedName += ".zip";
+    } else if (targetFormat) {
+      suggestedName += `.${targetFormat}`;
+    }
+    downloadLink.download = suggestedName;
+
+    resultArea.style.display = "block";
+  } catch (error) {
+    console.error("Conversion error:", error);
+    alert("Error processing the file.");
+  } finally {
+    convertBtn.disabled = false;
+    convertBtn.textContent = "Convert / Compress";
+  }
+   }
+   
+
+
 
 // ------------------------------
 // END: EverToolbox v2 Frontend Tools
