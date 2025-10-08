@@ -36,53 +36,121 @@
     <article class='card'>
       <h1>File Converter & Compressor</h1>
 <!-- ================= FILE CONVERTER TOOL START ================= -->
-<section class="tool-section">
-  <form id="fileConverterForm" class="tool-form">
-    <label>Select file to convert:</label>
-    <input type="file" id="fileInput" name="file" required>
+<section id="file-converter-tool" class="tool-section">
 
-    <label>Choose output format:</label>
-    <select id="targetExt" name="targetExt">
-      <option value="pdf">PDF</option>
-      <option value="docx">DOCX</option>
-      <option value="txt">TXT</option>
-      <option value="html">HTML</option>
-      <option value="odt">ODT</option>
-      <option value="rtf">RTF</option>
-    </select>
+  <form id="fileConvertForm" onsubmit="return false;">
+    <div class="form-group">
+      <label for="fileInput">Choose file:</label>
+      <input type="file" id="fileInput" required />
+    </div>
 
-    <button type="submit" class="btn">Convert</button>
+    <div class="form-group">
+      <label for="targetFormat">Convert to:</label>
+      <select id="targetFormat" required>
+        <option value="">Select format</option>
+        <option value="pdf">PDF</option>
+        <option value="docx">DOCX</option>
+        <option value="txt">TXT</option>
+        <option value="png">PNG</option>
+        <option value="jpg">JPG</option>
+        <option value="zip">ZIP</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>
+        <input type="checkbox" id="compressOnly" />
+        Compress only (no format change)
+      </label>
+    </div>
+
+    <button id="convertBtn" type="button">Convert / Compress</button>
   </form>
 
-  <div id="status" class="status"></div>
-
-  <div id="previewContainer" class="preview-container" style="display:none;">
-    <h3>Preview</h3>
-    <div id="previewContent"></div>
-    <button id="editBtn" class="btn">Edit / Finalize</button>
+  <div id="previewArea" class="preview-area" style="display:none;">
+    <h3>Preview:</h3>
+    <div id="previewContainer"></div>
   </div>
 
-  <!-- Editor Modal -->
-  <div id="editorModal" class="modal" style="display:none;">
-    <div class="modal-content">
-      <h3>Edit & Download</h3>
-      <label>Rename file:</label>
-      <input type="text" id="renameInput" placeholder="newfilename.pdf">
-
-      <label>Add watermark (optional):</label>
-      <input type="text" id="watermarkInput" placeholder="Watermark text">
-
-      <label>Compression level:</label>
-      <input type="range" id="compressionInput" min="10" max="100" value="90">
-      <span id="compressionValue">90%</span>
-
-      <div class="modal-actions">
-        <button id="downloadBtn" class="btn">Download</button>
-        <button id="closeModal" class="btn-secondary">Cancel</button>
-      </div>
-    </div>
+  <div id="resultArea" class="result-area" style="display:none;">
+    <h3>Converted File:</h3>
+    <a id="downloadLink" href="#" download class="download-btn">Download</a>
   </div>
-  </section>
+</section>
+
+<script>
+  const API_BASE = "https://evertoolbox-backend.onrender.com";
+  
+  const form = document.getElementById('fileConvertForm');
+  const convertBtn = document.getElementById('convertBtn');
+  const fileInput = document.getElementById('fileInput');
+  const targetFormat = document.getElementById('targetFormat');
+  const compressOnly = document.getElementById('compressOnly');
+  const previewArea = document.getElementById('previewArea');
+  const previewContainer = document.getElementById('previewContainer');
+  const resultArea = document.getElementById('resultArea');
+  const downloadLink = document.getElementById('downloadLink');
+
+  // Handle Convert / Compress
+  convertBtn.addEventListener('click', async () => {
+    const file = fileInput.files[0];
+    if (!file) return alert('Please choose a file first');
+    const format = targetFormat.value;
+    const isCompress = compressOnly.checked;
+
+    // Basic preview for images
+    if (file.type.startsWith('image/')) {
+      previewArea.style.display = 'block';
+      const img = document.createElement('img');
+      img.src = URL.createObjectURL(file);
+      img.style.maxWidth = '200px';
+      previewContainer.innerHTML = '';
+      previewContainer.appendChild(img);
+    }
+
+    convertBtn.disabled = true;
+    convertBtn.textContent = 'Processing...';
+
+    const formData = new FormData();
+    formData.append('file', file);
+    if (!isCompress) formData.append('targetFormat', format);
+    formData.append('compress', isCompress);
+
+    try {
+      const endpoint = isCompress
+        ? `${API_BASE_URL}/api/compress`
+        : `${API_BASE_URL}/api/convert`;
+
+      const response = await fetch(endpoint, { method: 'POST', body: formData });
+      if (!response.ok) throw new Error('Error processing file');
+
+      const blob = await response.blob();
+      const fileURL = URL.createObjectURL(blob);
+      const ext = isCompress ? 'zip' : format;
+      const fileName = `converted_${Date.now()}.${ext}`;
+
+      resultArea.style.display = 'block';
+      downloadLink.href = fileURL;
+      downloadLink.download = fileName;
+      downloadLink.textContent = `Download ${fileName}`;
+
+      // Show preview for image conversions
+      if (['png', 'jpg', 'jpeg'].includes(format)) {
+        const img = document.createElement('img');
+        img.src = fileURL;
+        img.style.maxWidth = '200px';
+        previewContainer.appendChild(document.createElement('hr'));
+        previewContainer.appendChild(img);
+      }
+    } catch (err) {
+      alert('⚠️ ' + err.message);
+    } finally {
+      convertBtn.disabled = false;
+      convertBtn.textContent = 'Convert / Compress';
+    }
+  });
+</script>
+      
   </article>
   </main>
   <footer id="site-footer" class="site-footer" role="contentinfo">
@@ -97,105 +165,6 @@
     </div>
   </div>
 </footer>
-  <script src='script.js'> </script>
-
-  <script>
-const API_BASE = "https://evertoolbox-backend.onrender.com";
-    
-document.addEventListener("DOMContentLoaded", () => {
-  const form = document.getElementById("fileConverterForm");
-  const status = document.getElementById("status");
-  const previewContainer = document.getElementById("previewContainer");
-  const previewContent = document.getElementById("previewContent");
-  const editBtn = document.getElementById("editBtn");
-  const editorModal = document.getElementById("editorModal");
-  const closeModal = document.getElementById("closeModal");
-  const renameInput = document.getElementById("renameInput");
-  const watermarkInput = document.getElementById("watermarkInput");
-  const compressionInput = document.getElementById("compressionInput");
-  const compressionValue = document.getElementById("compressionValue");
-  const downloadBtn = document.getElementById("downloadBtn");
-
-  compressionInput.addEventListener("input", () => {
-    compressionValue.textContent = compressionInput.value + "%";
-  });
-
-  let convertedBlob = null;
-  let convertedType = "";
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const file = document.getElementById("fileInput").files[0];
-    const targetExt = document.getElementById("targetExt").value;
-    if (!file) return alert("Please select a file.");
-
-    status.textContent = "Converting...";
-    previewContainer.style.display = "none";
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("targetExt", targetExt);
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/convert-doc`, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) throw new Error("Error processing file");
-
-      convertedBlob = await response.blob();
-      convertedType = convertedBlob.type || "application/octet-stream";
-      status.textContent = "Conversion successful ✅";
-
-      previewContainer.style.display = "block";
-      previewContent.innerHTML = "";
-
-      const ext = targetExt.toLowerCase();
-      const url = URL.createObjectURL(convertedBlob);
-
-      if (ext === "pdf") {
-        previewContent.innerHTML = `<iframe src="${url}" width="100%" height="500px"></iframe>`;
-      } else if (ext === "txt" || convertedType.startsWith("text/")) {
-        const text = await convertedBlob.text();
-        previewContent.innerHTML = `<pre>${text.substring(0, 2000)}</pre>`;
-      } else if (["png", "jpg", "jpeg", "webp"].includes(ext)) {
-        previewContent.innerHTML = `<img src="${url}" alt="Preview" style="max-width:100%; border-radius:8px;">`;
-      } else {
-        previewContent.innerHTML = `<p>Preview not supported for this format. You can download directly.</p>`;
-      }
-    } catch (err) {
-      console.error(err);
-      status.textContent = "❌ Error: " + err.message;
-    }
-  });
-
-  editBtn.addEventListener("click", () => {
-    editorModal.style.display = "flex";
-  });
-
-  closeModal.addEventListener("click", () => {
-    editorModal.style.display = "none";
-  });
-
-  downloadBtn.addEventListener("click", () => {
-    if (!convertedBlob) return alert("No converted file available.");
-
-    const filename = renameInput.value.trim() || "converted-file";
-    const extension = document.getElementById("targetExt").value;
-    const finalName = filename.endsWith("." + extension)
-      ? filename
-      : filename + "." + extension;
-
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(convertedBlob);
-    link.download = finalName;
-    link.click();
-
-    editorModal.style.display = "none";
-  });
-});
-  </script>
-  
+  <script src='script.js'> </script>  
 </body>
 </html>
