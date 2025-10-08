@@ -36,136 +36,222 @@
     <article class='card'>
       <h1>File Converter & Compressor</h1>
 <!-- ================= FILE CONVERTER TOOL START ================= -->
-  <!-- =========================
-     File Converter — Final (Professional)
-     Paste into your file-converter page
-     ========================= -->
+  <!-- ==============================
+     FILE CONVERTER + COMPRESSOR
+     ============================== -->
+<section id="file-converter-tool" class="tool-section">
 
-      <section id="file-converter-tool" class="tool-section card">
   <h2 class="tool-title">File Converter & Compressor</h2>
+  <p class="tool-subtitle">Easily convert or compress files directly in your browser.</p>
 
-  <form id="fileConvertForm" onsubmit="return false;">
+  <form id="fileToolForm" onsubmit="return false;" class="tool-form">
     <div class="form-group">
-      <label for="fileInput">Choose file:</label>
-      <input type="file" id="fileInput" required />
+      <label for="fileInput" class="form-label">Choose File:</label>
+      <input type="file" id="fileInput" required class="form-control" />
     </div>
 
     <div class="form-group">
-      <label for="targetFormat">Convert to:</label>
-      <select id="targetFormat">
+      <label for="targetFormat" class="form-label">Convert To:</label>
+      <select id="targetFormat" class="form-control">
         <option value="">Select format</option>
         <option value="pdf">PDF</option>
         <option value="docx">DOCX</option>
         <option value="txt">TXT</option>
-        <option value="jpg">JPG</option>
         <option value="png">PNG</option>
+        <option value="jpg">JPG</option>
       </select>
     </div>
 
-    <div class="form-group">
-      <label><input type="checkbox" id="compressOnly" /> Compress only (no conversion)</label>
+    <div class="btn-group">
+      <button id="convertBtn" type="button" class="btn-primary">Start Conversion</button>
+      <button id="compressBtn" type="button" class="btn-secondary">Compress File</button>
     </div>
-
-    <button id="convertBtn" type="button" class="btn-primary">
-      <span id="btnText">Start Conversion</span>
-      <span id="spinner" class="spinner" style="display:none;"></span>
-    </button>
   </form>
 
   <div id="previewArea" class="preview-area" style="display:none;">
-    <h3>Preview</h3>
-    <img id="previewImage" style="max-width:100%;border-radius:8px;" />
+    <h3>Preview:</h3>
+    <div id="previewContainer"></div>
   </div>
 
   <div id="resultArea" class="result-area" style="display:none;">
-    <h3>Result</h3>
-    <a id="downloadLink" href="#" class="btn-primary">Download</a>
+    <h3>Result:</h3>
+    <p id="sizeInfo" class="size-info"></p>
+    <a id="downloadLink" href="#" download class="download-btn">Download File</a>
   </div>
 </section>
 
 <script>
 const API_BASE_URL = "https://evertoolbox-backend.onrender.com";
 
-const fileInput = document.getElementById("fileInput");
-const targetFormat = document.getElementById("targetFormat");
-const compressOnly = document.getElementById("compressOnly");
-const convertBtn = document.getElementById("convertBtn");
-const btnText = document.getElementById("btnText");
-const spinner = document.getElementById("spinner");
-const previewArea = document.getElementById("previewArea");
-const previewImage = document.getElementById("previewImage");
-const resultArea = document.getElementById("resultArea");
-const downloadLink = document.getElementById("downloadLink");
+// Reusable preview helper
+function showPreview(file) {
+  const previewArea = document.getElementById("previewArea");
+  const previewContainer = document.getElementById("previewContainer");
+  previewContainer.innerHTML = "";
 
-fileInput.addEventListener("change", () => {
+  if (file && file.type.startsWith("image/")) {
+    const img = document.createElement("img");
+    img.src = URL.createObjectURL(file);
+    img.style.maxWidth = "200px";
+    img.style.borderRadius = "8px";
+    img.style.marginTop = "10px";
+    previewContainer.appendChild(img);
+  } else {
+    const info = document.createElement("p");
+    info.textContent = `File selected: ${file.name}`;
+    previewContainer.appendChild(info);
+  }
+
+  previewArea.style.display = "block";
+}
+
+// Get readable file size
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + " B";
+  const units = ["KB", "MB", "GB"];
+  let i = -1;
+  do { bytes /= 1024; i++; } while (bytes >= 1024 && i < units.length - 1);
+  return bytes.toFixed(1) + " " + units[i];
+}
+
+// Common file handler
+async function handleFile(action) {
+  const fileInput = document.getElementById("fileInput");
+  const targetFormat = document.getElementById("targetFormat").value;
+  const resultArea = document.getElementById("resultArea");
+  const downloadLink = document.getElementById("downloadLink");
+  const sizeInfo = document.getElementById("sizeInfo");
+
+  if (!fileInput.files.length) return alert("Please select a file first.");
+
   const file = fileInput.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    if (file.type.startsWith("image/")) {
-      previewImage.src = e.target.result;
-      previewArea.style.display = "block";
-    } else {
-      previewArea.style.display = "none";
-    }
-  };
-  reader.readAsDataURL(file);
-});
+  showPreview(file);
 
-convertBtn.addEventListener("click", async () => {
-  const file = fileInput.files[0];
-  if (!file) return alert("Please select a file first.");
+  const formData = new FormData();
+  formData.append("file", file);
 
-  const format = targetFormat.value;
-  const isCompressOnly = compressOnly.checked;
+  let endpoint = "";
+  if (action === "convert") {
+    if (!targetFormat) return alert("Please select an output format first.");
+    formData.append("outputFormat", targetFormat);
+    endpoint = `${API_BASE_URL}/api/v3/file/convert`;
+  } else if (action === "compress") {
+    endpoint = `${API_BASE_URL}/api/v3/file/compress`;
+  }
 
-  convertBtn.disabled = true;
-  btnText.textContent = "Processing...";
-  spinner.style.display = "inline-block";
+  // Add loading spinner
+  const btn = document.getElementById(action === "convert" ? "convertBtn" : "compressBtn");
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Processing...";
 
   try {
-    let blob;
-    // Client-side image compression
-    if (isCompressOnly && file.type.startsWith("image/")) {
-      const img = await createImageBitmap(file);
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0);
-      const quality = 0.7; // compression ratio
-      const mime = file.type;
-      const compressedBlob = await new Promise(r => canvas.toBlob(r, mime, quality));
-      blob = compressedBlob;
-    } else {
-      // Server-side conversion/compression
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("outputFormat", format || "");
-      formData.append("compressOnly", isCompressOnly);
+    const res = await fetch(endpoint, { method: "POST", body: formData });
+    if (!res.ok) throw new Error("Processing failed");
 
-      const res = await fetch(`${API_BASE_URL}/api/v3/file/convert`, { method: "POST", body: formData });
-      if (!res.ok) throw new Error("Conversion failed");
-      blob = await res.blob();
-    }
+    const blob = await res.blob();
+    const downloadUrl = URL.createObjectURL(blob);
+    const newFile = new File([blob], file.name, { type: blob.type });
 
-    const url = URL.createObjectURL(blob);
+    const originalSize = formatSize(file.size);
+    const newSize = formatSize(blob.size);
+    sizeInfo.textContent = `Original: ${originalSize} → Result: ${newSize}`;
+
+    downloadLink.href = downloadUrl;
+    downloadLink.download = file.name.replace(/\.[^/.]+$/, "") + 
+      (action === "convert" ? `.${targetFormat}` : file.name.match(/\.[^/.]+$/)[0]);
+    
     resultArea.style.display = "block";
-    downloadLink.href = url;
-    const name = file.name.split(".")[0];
-    const ext = isCompressOnly ? file.name.split(".").pop() : (format || file.name.split(".").pop());
-    downloadLink.download = `${name}_processed.${ext}`;
-
   } catch (err) {
     console.error(err);
-    alert("File conversion or compression failed.");
+    alert("Error processing the file. Please try again.");
   } finally {
-    convertBtn.disabled = false;
-    btnText.textContent = "Start Conversion";
-    spinner.style.display = "none";
+    btn.disabled = false;
+    btn.textContent = originalText;
   }
-});
-  </script>
+}
+
+document.getElementById("convertBtn").addEventListener("click", () => handleFile("convert"));
+document.getElementById("compressBtn").addEventListener("click", () => handleFile("compress"));
+</script>
+
+<style>
+.tool-section {
+  max-width: 500px;
+  margin: auto;
+  padding: 20px;
+  background: #f9fbff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  text-align: center;
+}
+.tool-title {
+  color: #0056b3;
+  margin-bottom: 8px;
+}
+.tool-subtitle {
+  color: #555;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+.form-group {
+  margin-bottom: 15px;
+  text-align: left;
+}
+.form-label {
+  display: block;
+  margin-bottom: 5px;
+  color: #333;
+  font-weight: 500;
+}
+.form-control {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+}
+.btn-group {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 15px;
+}
+.btn-primary, .btn-secondary {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-primary { background-color: #007bff; }
+.btn-secondary { background-color: #0056b3; }
+.btn-primary:hover { background-color: #0069d9; }
+.btn-secondary:hover { background-color: #004a99; }
+.preview-area, .result-area {
+  margin-top: 20px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px;
+}
+.download-btn {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 8px 16px;
+  background: #007bff;
+  color: white;
+  border-radius: 6px;
+  text-decoration: none;
+}
+.download-btn:hover { background: #0056b3; }
+.size-info {
+  font-size: 14px;
+  color: #444;
+}
+        </style>
+    
    </article>
   </main>
   <footer id="site-footer" class="site-footer" role="contentinfo">
