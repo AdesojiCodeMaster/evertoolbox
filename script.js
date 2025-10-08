@@ -867,15 +867,12 @@ document.getElementById("unzipToolFormV2")?.addEventListener("submit", async (e)
   }
 });
 
-
-
-
 /* ===========================================================
-   FILE CONVERTER + COMPRESSION + PREVIEW + DOWNLOAD
+   FILE CONVERTER + IMAGE EDITOR + PREVIEW + DOWNLOAD
    =========================================================== */
 
 async function convertFile() {
-  const API_BASE_URL = window.API_BASE_URL || "https://your-backend-name.onrender.com"; // replace with your Render backend URL
+  const API_BASE_URL = window.API_BASE_URL || "https://your-backend-name.onrender.com"; // Update this to your Render backend URL
 
   const fileInput = document.getElementById("fileInput");
   const targetFormat = document.getElementById("targetFormat").value;
@@ -887,28 +884,37 @@ async function convertFile() {
     return;
   }
 
-  // Show a simple loading state
   convertBtn.disabled = true;
   convertBtn.textContent = "Processing...";
 
-  // Preview if it's an image
   const file = fileInput.files[0];
-  const preview = document.getElementById("previewArea");
+  const previewArea = document.getElementById("previewArea");
   const previewContainer = document.getElementById("previewContainer");
-  if (file && file.type.startsWith("image/")) {
+  const resultArea = document.getElementById("resultArea");
+
+  previewContainer.innerHTML = "";
+  resultArea.style.display = "none";
+
+  // If the file is an image, enable editing options
+  if (file.type.startsWith("image/")) {
     const img = document.createElement("img");
     img.src = URL.createObjectURL(file);
-    img.style.maxWidth = "220px";
+    img.id = "editableImage";
+    img.style.maxWidth = "100%";
     img.style.borderRadius = "8px";
-    previewContainer.innerHTML = "";
     previewContainer.appendChild(img);
-    preview.style.display = "block";
+    previewArea.style.display = "block";
+
+    addImageEditorTools(img);
   } else {
-    preview.style.display = "none";
+    previewArea.style.display = "none";
   }
 
   const formData = new FormData();
-  formData.append("file", file);
+
+  // Wait briefly to ensure edits (if any) are applied before upload
+  const editedBlob = await getEditedImageBlob(file);
+  formData.append("file", editedBlob, file.name);
   formData.append("outputFormat", targetFormat);
   formData.append("compressOnly", compressOnly);
 
@@ -920,11 +926,8 @@ async function convertFile() {
 
     if (!response.ok) throw new Error("File conversion failed.");
 
-    // Handle file download
     const blob = await response.blob();
     const downloadUrl = URL.createObjectURL(blob);
-
-    const resultArea = document.getElementById("resultArea");
     const downloadLink = document.getElementById("downloadLink");
     downloadLink.href = downloadUrl;
 
@@ -944,7 +947,68 @@ async function convertFile() {
     convertBtn.disabled = false;
     convertBtn.textContent = "Convert / Compress";
   }
-   }
+}
+
+/* ===========================================================
+   IMAGE EDITOR TOOLS (CROP, TEXT, RESIZE, FILTERS)
+   =========================================================== */
+
+function addImageEditorTools(img) {
+  const existingTools = document.getElementById("imgEditTools");
+  if (existingTools) existingTools.remove();
+
+  const toolBox = document.createElement("div");
+  toolBox.id = "imgEditTools";
+  toolBox.style.marginTop = "1rem";
+  toolBox.innerHTML = `
+    <h4>Edit Image:</h4>
+    <label>Resize: <input type="number" id="resizeWidth" placeholder="width px" style="width:80px;"> × 
+                    <input type="number" id="resizeHeight" placeholder="height px" style="width:80px;"></label><br><br>
+    <label>Text: <input type="text" id="overlayText" placeholder="Add text..."></label><br><br>
+    <label>Brightness: <input type="range" id="brightness" min="50" max="150" value="100">%</label><br>
+    <label>Contrast: <input type="range" id="contrast" min="50" max="150" value="100">%</label><br><br>
+    <button type="button" id="applyEditsBtn">Apply Edits</button>
+  `;
+  img.parentNode.appendChild(toolBox);
+
+  document.getElementById("applyEditsBtn").onclick = () => applyEdits(img);
+}
+
+function applyEdits(img) {
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+
+  const resizeWidth = parseInt(document.getElementById("resizeWidth").value) || img.naturalWidth;
+  const resizeHeight = parseInt(document.getElementById("resizeHeight").value) || img.naturalHeight;
+  const overlayText = document.getElementById("overlayText").value || "";
+  const brightness = document.getElementById("brightness").value;
+  const contrast = document.getElementById("contrast").value;
+
+  canvas.width = resizeWidth;
+  canvas.height = resizeHeight;
+
+  ctx.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
+  ctx.drawImage(img, 0, 0, resizeWidth, resizeHeight);
+
+  if (overlayText) {
+    ctx.font = "20px sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    ctx.textAlign = "center";
+    ctx.fillText(overlayText, resizeWidth / 2, resizeHeight - 30);
+  }
+
+  img.src = canvas.toDataURL("image/png");
+}
+
+/* ===========================================================
+   CAPTURE EDITED IMAGE AS BLOB FOR UPLOAD
+   =========================================================== */
+async function getEditedImageBlob(file) {
+  const img = document.getElementById("editableImage");
+  if (!img) return file; // non-image files skip edit
+
+  return await fetch(img.src).then(res => res.blob());
+}
    
 
 
