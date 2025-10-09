@@ -42,6 +42,254 @@
 
 <section id="file-converter-tool" class="tool-section">
 <h2 class="tool-subtitle">Easily convert or compress files directly in your browser.</h2>
+ <!-- ==========================================================
+     EverToolbox File Converter & Compressor
+     Global Standard Version - Responsive, Polished, Functional
+========================================================== -->
+
+  <div class="tool-container">
+    <h2>File Converter & Compressor</h2>
+    <p class="tool-subtitle">
+      Convert or compress your documents and images quickly and securely.
+    </p>
+
+    <form id="fileToolForm" onsubmit="return false;">
+      <div class="form-group">
+        <label for="fileInput">Choose file:</label>
+        <input type="file" id="fileInput" required />
+      </div>
+
+      <div class="form-group">
+        <label for="outputFormat">Convert to:</label>
+        <select id="outputFormat">
+          <option value="">Select format</option>
+          <option value="pdf">PDF</option>
+          <option value="jpg">JPG</option>
+          <option value="png">PNG</option>
+          <option value="txt">TXT</option>
+          <option value="docx">DOCX</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="watermark">Watermark (optional):</label>
+        <input type="text" id="watermark" placeholder="Enter text watermark" />
+      </div>
+
+      <div class="form-group">
+        <label for="renameTo">Rename to (optional):</label>
+        <input type="text" id="renameTo" placeholder="e.g. newfile.pdf" />
+      </div>
+
+      <div class="button-group">
+        <button type="button" class="btn primary" onclick="handleFile('convert')">
+          Start Conversion
+        </button>
+        <button type="button" class="btn secondary" onclick="handleFile('compress')">
+          Compress File
+        </button>
+      </div>
+    </form>
+
+    <div id="statusArea" class="status hidden">
+      <div class="spinner"></div>
+      <p id="statusText">Processing your file...</p>
+    </div>
+
+    <div id="resultArea" class="result hidden">
+      <h3>Result</h3>
+      <p id="fileInfo"></p>
+      <a id="downloadLink" href="#" class="btn download">Download File</a>
+    </div>
+  </div>
+
+
+<script>
+const API_BASE_URL = "https://evertoolbox-backend.onrender.com";
+
+async function handleFile(action) {
+  const fileInput = document.getElementById("fileInput");
+  const outputFormat = document.getElementById("outputFormat");
+  const watermark = document.getElementById("watermark");
+  const renameTo = document.getElementById("renameTo");
+  const statusArea = document.getElementById("statusArea");
+  const statusText = document.getElementById("statusText");
+  const resultArea = document.getElementById("resultArea");
+  const fileInfo = document.getElementById("fileInfo");
+  const downloadLink = document.getElementById("downloadLink");
+
+  if (!fileInput.files.length) return alert("Please select a file first.");
+
+  resultArea.classList.add("hidden");
+  statusArea.classList.remove("hidden");
+  statusText.textContent = "Processing your file...";
+
+  const file = fileInput.files[0];
+  const form = new FormData();
+  form.append("file", file);
+  form.append("renameTo", renameTo.value || "");
+  form.append("watermark", watermark.value || "");
+  if (action === "convert") {
+    if (!outputFormat.value) {
+      alert("Please choose an output format.");
+      statusArea.classList.add("hidden");
+      return;
+    }
+    form.append("outputFormat", outputFormat.value);
+  }
+
+  const endpoint =
+    action === "convert"
+      ? `${API_BASE_URL}/api/v3/file/convert`
+      : `${API_BASE_URL}/api/v3/file/compress`;
+
+  try {
+    const res = await fetch(endpoint, { method: "POST", body: form });
+    if (!res.ok) throw new Error("Error processing the file.");
+
+    const blob = await res.blob();
+    const filename =
+      renameTo.value ||
+      (action === "convert"
+        ? file.name.replace(/\.[^/.]+$/, "") + "." + outputFormat.value
+        : file.name);
+
+    const downloadUrl = URL.createObjectURL(blob);
+    downloadLink.href = downloadUrl;
+    downloadLink.download = filename;
+    fileInfo.textContent = `${filename} — ${(blob.size / 1024).toFixed(1)} KB`;
+
+    statusArea.classList.add("hidden");
+    resultArea.classList.remove("hidden");
+  } catch (err) {
+    console.error(err);
+    statusArea.classList.add("hidden");
+    alert("Error processing the file. Please try again.");
+  }
+}
+</script>
+
+<style>
+/* ========== Global Tool Styling (EverToolbox Theme) ========== */
+#evertoolbox-file-tool {
+  background: #ffffff;
+  border-radius: 16px;
+  max-width: 650px;
+  margin: 30px auto;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  font-family: "Inter", system-ui, sans-serif;
+}
+.tool-container {
+  padding: 25px 20px 30px;
+}
+#evertoolbox-file-tool h2 {
+  text-align: center;
+  color: #1e40af;
+  font-size: 1.8rem;
+  margin-bottom: 6px;
+}
+.tool-subtitle {
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.95rem;
+  margin-bottom: 20px;
+}
+.form-group {
+  margin-bottom: 15px;
+}
+.form-group label {
+  display: block;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 6px;
+}
+input[type="file"],
+select,
+input[type="text"] {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border 0.2s;
+}
+input[type="file"]:focus,
+select:focus,
+input[type="text"]:focus {
+  border-color: #2563eb;
+}
+.button-group {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 20px;
+}
+.btn {
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.3s ease;
+  font-size: 0.95rem;
+}
+.btn.primary {
+  background: #1e40af;
+  color: #fff;
+}
+.btn.secondary {
+  background: #2563eb;
+  color: #fff;
+}
+.btn.download {
+  background: #1e3a8a;
+  display: inline-block;
+  text-decoration: none;
+  margin-top: 10px;
+}
+.btn:hover {
+  opacity: 0.9;
+}
+.status {
+  text-align: center;
+  margin-top: 20px;
+  color: #374151;
+}
+.spinner {
+  width: 30px;
+  height: 30px;
+  border: 4px solid #d1d5db;
+  border-top: 4px solid #2563eb;
+  border-radius: 50%;
+  margin: 0 auto 10px;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.result {
+  text-align: center;
+  margin-top: 25px;
+  padding-top: 10px;
+  border-top: 1px solid #e5e7eb;
+}
+.hidden {
+  display: none !important;
+}
+@media (max-width: 640px) {
+  #evertoolbox-file-tool {
+    margin: 15px;
+  }
+  .btn {
+    flex: 1;
+    font-size: 0.9rem;
+  }
+}
+      </style>
   
 
   
