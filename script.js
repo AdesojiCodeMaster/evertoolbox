@@ -868,148 +868,118 @@ document.getElementById("unzipToolFormV2")?.addEventListener("submit", async (e)
 });
 
 /* ===========================================================
-   FILE CONVERTER + IMAGE EDITOR + PREVIEW + DOWNLOAD
+   FILE CONVERTER + Compressor 
    =========================================================== */
+const API_BASE_URL = "https://evertoolbox-backend.onrender.com";
 
-async function convertFile() {
-  const API_BASE_URL = window.API_BASE_URL || "https://evertoolbox-backend.onrender.com"; // Update this to your Render backend URL
+document.addEventListener("DOMContentLoaded", () => {
+  const fileInput = document.getElementById("file-input");
+  const fileName = document.getElementById("file-name");
 
-  const fileInput = document.getElementById("fileInput");
-  const targetFormat = document.getElementById("targetFormat").value;
-  const compressOnly = document.getElementById("compressOnly").checked;
-  const convertBtn = document.getElementById("convertBtn");
+  if (fileInput) {
+    fileInput.addEventListener("change", (e) => {
+      if (e.target.files.length) {
+        fileName.textContent = e.target.files[0].name;
+      }
+    });
+  }
+});
+
+async function handleFile(action) {
+  const fileInput = document.getElementById("file-input");
+  const outputFormat = document.getElementById("output-format")?.value;
+  const watermark = document.getElementById("watermark")?.value;
+  const renameTo = document.getElementById("rename-to")?.value;
+  const resultBox = document.getElementById("result-box");
+  const resultText = document.getElementById("result-text");
 
   if (!fileInput.files.length) {
     alert("Please select a file first.");
     return;
   }
 
-  convertBtn.disabled = true;
-  convertBtn.textContent = "Processing...";
-
   const file = fileInput.files[0];
-  const previewArea = document.getElementById("previewArea");
-  const previewContainer = document.getElementById("previewContainer");
-  const resultArea = document.getElementById("resultArea");
+  const fileType = file.type || "";
+  const fileExt = file.name.split(".").pop().toLowerCase();
 
-  previewContainer.innerHTML = "";
-  resultArea.style.display = "none";
+  // === VALIDATION RULES ===
+  const imageTypes = ["image/jpeg", "image/png", "image/webp"];
+  const docTypes = ["application/pdf", "text/plain", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
 
-  // If the file is an image, enable editing options
-  if (file.type.startsWith("image/")) {
-    const img = document.createElement("img");
-    img.src = URL.createObjectURL(file);
-    img.id = "editableImage";
-    img.style.maxWidth = "100%";
-    img.style.borderRadius = "8px";
-    previewContainer.appendChild(img);
-    previewArea.style.display = "block";
-
-    addImageEditorTools(img);
-  } else {
-    previewArea.style.display = "none";
+  if (action === "compress") {
+    // Only allow images for compression
+    if (!imageTypes.includes(fileType)) {
+      alert("Compression is only supported for images (JPG, PNG, WEBP).");
+      return;
+    }
   }
+
+  if (action === "convert") {
+    // Only allow conversion from supported types
+    const supported = [...imageTypes, ...docTypes];
+    if (!supported.includes(fileType)) {
+      alert("Unsupported file type for conversion.");
+      return;
+    }
+
+    // Prevent converting to same type
+    if (outputFormat && fileExt === outputFormat.toLowerCase()) {
+      alert("The output format must be different from the source file.");
+      return;
+    }
+  }
+
+  resultBox.style.display = "block";
+  resultText.textContent = "Processing... Please wait.";
 
   const formData = new FormData();
+  formData.append("file", file);
 
-  // Wait briefly to ensure edits (if any) are applied before upload
-  const editedBlob = await getEditedImageBlob(file);
-  formData.append("file", editedBlob, file.name);
-  formData.append("outputFormat", targetFormat);
-  formData.append("compressOnly", compressOnly);
+  if (action === "convert") {
+    formData.append("outputFormat", outputFormat);
+    formData.append("watermark", watermark);
+    formData.append("renameTo", renameTo);
+  }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v3/file/convert`, {
-      method: "POST",
-      body: formData,
-    });
+    const endpoint =
+      action === "compress"
+        ? `${API_BASE_URL}/api/v3/file/compress`
+        : `${API_BASE_URL}/api/v3/file/convert`;
 
-    if (!response.ok) throw new Error("File conversion failed.");
+    const res = await fetch(endpoint, { method: "POST", body: formData });
 
-    const blob = await response.blob();
-    const downloadUrl = URL.createObjectURL(blob);
-    const downloadLink = document.getElementById("downloadLink");
-    downloadLink.href = downloadUrl;
-
-    let suggestedName = "converted";
-    if (compressOnly) {
-      suggestedName += ".zip";
-    } else if (targetFormat) {
-      suggestedName += `.${targetFormat}`;
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Error processing file");
     }
-    downloadLink.download = suggestedName;
 
-    resultArea.style.display = "block";
-  } catch (error) {
-    console.error("Conversion error:", error);
-    alert("Error processing the file.");
-  } finally {
-    convertBtn.disabled = false;
-    convertBtn.textContent = "Convert / Compress";
+    const blob = await res.blob();
+
+    // File size info
+    const originalSize = (file.size / 1024).toFixed(1);
+    const newSize = (blob.size / 1024).toFixed(1);
+
+    const downloadUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = downloadUrl;
+
+    const suffix = action === "compress" ? "_compressed" : "_converted";
+    const cleanName = file.name.replace(/\.[^/.]+$/, "");
+    a.download = `${cleanName}${suffix}.${outputFormat || fileExt}`;
+    a.click();
+
+    resultText.textContent =
+      action === "compress"
+        ? `✅ Compressed successfully! Size: ${originalSize} KB → ${newSize} KB`
+        : `✅ Converted successfully! Size: ${originalSize} KB → ${newSize} KB`;
+  } catch (err) {
+    console.error("❌", err);
+    resultText.textContent =
+      "❌ Error processing the file. Please try again or check supported formats.";
   }
-}
-
-/* ===========================================================
-   IMAGE EDITOR TOOLS (CROP, TEXT, RESIZE, FILTERS)
-   =========================================================== */
-
-function addImageEditorTools(img) {
-  const existingTools = document.getElementById("imgEditTools");
-  if (existingTools) existingTools.remove();
-
-  const toolBox = document.createElement("div");
-  toolBox.id = "imgEditTools";
-  toolBox.style.marginTop = "1rem";
-  toolBox.innerHTML = `
-    <h4>Edit Image:</h4>
-    <label>Resize: <input type="number" id="resizeWidth" placeholder="width px" style="width:80px;"> × 
-                    <input type="number" id="resizeHeight" placeholder="height px" style="width:80px;"></label><br><br>
-    <label>Text: <input type="text" id="overlayText" placeholder="Add text..."></label><br><br>
-    <label>Brightness: <input type="range" id="brightness" min="50" max="150" value="100">%</label><br>
-    <label>Contrast: <input type="range" id="contrast" min="50" max="150" value="100">%</label><br><br>
-    <button type="button" id="applyEditsBtn">Apply Edits</button>
-  `;
-  img.parentNode.appendChild(toolBox);
-
-  document.getElementById("applyEditsBtn").onclick = () => applyEdits(img);
-}
-
-function applyEdits(img) {
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
-
-  const resizeWidth = parseInt(document.getElementById("resizeWidth").value) || img.naturalWidth;
-  const resizeHeight = parseInt(document.getElementById("resizeHeight").value) || img.naturalHeight;
-  const overlayText = document.getElementById("overlayText").value || "";
-  const brightness = document.getElementById("brightness").value;
-  const contrast = document.getElementById("contrast").value;
-
-  canvas.width = resizeWidth;
-  canvas.height = resizeHeight;
-
-  ctx.filter = `brightness(${brightness}%) contrast(${contrast}%)`;
-  ctx.drawImage(img, 0, 0, resizeWidth, resizeHeight);
-
-  if (overlayText) {
-    ctx.font = "20px sans-serif";
-    ctx.fillStyle = "rgba(255,255,255,0.8)";
-    ctx.textAlign = "center";
-    ctx.fillText(overlayText, resizeWidth / 2, resizeHeight - 30);
-  }
-
-  img.src = canvas.toDataURL("image/png");
-}
-
-/* ===========================================================
-   CAPTURE EDITED IMAGE AS BLOB FOR UPLOAD
-   =========================================================== */
-async function getEditedImageBlob(file) {
-  const img = document.getElementById("editableImage");
-  if (!img) return file; // non-image files skip edit
-
-  return await fetch(img.src).then(res => res.blob());
-}
-   
+       }
+     
 
 
 
