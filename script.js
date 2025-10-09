@@ -870,115 +870,147 @@ document.getElementById("unzipToolFormV2")?.addEventListener("submit", async (e)
 /* ===========================================================
    FILE CONVERTER + Compressor 
    =========================================================== */
+//Add this snippet where your tool JS runs (or replace your script.js file) 
+
 const API_BASE_URL = "https://evertoolbox-backend.onrender.com";
 
-document.addEventListener("DOMContentLoaded", () => {
-  const fileInput = document.getElementById("file-input");
-  const fileName = document.getElementById("file-name");
+function qs(id) { return document.getElementById(id); }
 
+// call on DOM ready if needed
+document.addEventListener("DOMContentLoaded", () => {
+  const fileInput = qs("file-input");
+  const fileName = qs("file-name");
   if (fileInput) {
     fileInput.addEventListener("change", (e) => {
-      if (e.target.files.length) {
-        fileName.textContent = e.target.files[0].name;
-      }
+      if (e.target.files.length) fileName && (fileName.textContent = e.target.files[0].name);
     });
   }
 });
 
-async function handleFile(action) {
-  const fileInput = document.getElementById("file-input");
-  const outputFormat = document.getElementById("output-format")?.value;
-  const watermark = document.getElementById("watermark")?.value;
-  const renameTo = document.getElementById("rename-to")?.value;
-  const resultBox = document.getElementById("result-box");
-  const resultText = document.getElementById("result-text");
+function setStatus(text, showProgress = false, percent = 0) {
+  const statusText = qs("status-text");
+  const progressWrap = qs("progress-wrap");
+  const progressBar = qs("progress-bar");
+  if (statusText) statusText.textContent = text;
+  if (progressWrap) progressWrap.style.display = showProgress ? "block" : "none";
+  if (progressBar) progressBar.style.width = (percent || 0) + "%";
+}
 
-  if (!fileInput.files.length) {
-    alert("Please select a file first.");
-    return;
-  }
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+// main handler used by buttons
+function handleFile(action) {
+  const fileInput = qs("file-input");
+  const outputFormat = qs("output-format")?.value;
+  const watermark = qs("watermark")?.value;
+  const renameTo = qs("rename-to")?.value;
+  const qualityInput = qs("compress-quality")?.value;
+
+  if (!fileInput || !fileInput.files.length) return alert("Choose a file first.");
 
   const file = fileInput.files[0];
   const fileType = file.type || "";
-  const fileExt = file.name.split(".").pop().toLowerCase();
+  const fileExt = (file.name.split(".").pop() || "").toLowerCase();
 
-  // === VALIDATION RULES ===
-  const imageTypes = ["image/jpeg", "image/png", "image/webp"];
-  const docTypes = ["application/pdf", "text/plain", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
+  // simple validation
+  const imageTypes = ["image/jpeg","image/png","image/webp"];
+  const docTypes = ["application/pdf","text/plain","application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
 
   if (action === "compress") {
-    // Only allow images for compression
-    if (!imageTypes.includes(fileType)) {
-      alert("Compression is only supported for images (JPG, PNG, WEBP).");
-      return;
+    if (!imageTypes.includes(fileType) && fileExt !== "pdf") {
+      return alert("Compression supports images (JPG/PNG/WEBP) or PDF (best-effort).");
     }
   }
-
   if (action === "convert") {
-    // Only allow conversion from supported types
     const supported = [...imageTypes, ...docTypes];
-    if (!supported.includes(fileType)) {
-      alert("Unsupported file type for conversion.");
-      return;
-    }
-
-    // Prevent converting to same type
-    if (outputFormat && fileExt === outputFormat.toLowerCase()) {
-      alert("The output format must be different from the source file.");
-      return;
-    }
+    if (!supported.includes(fileType)) return alert("Unsupported file type for conversion.");
+    if (!outputFormat) return alert("Choose an output format.");
+    if (outputFormat.toLowerCase() === fileExt) return alert("Choose a different output format than the source.");
   }
 
-  resultBox.style.display = "block";
-  resultText.textContent = "Processing... Please wait.";
+  setStatus(action === "compress" ? "Uploading for compression..." : "Uploading for conversion...", true, 0);
 
-  const formData = new FormData();
-  formData.append("file", file);
-
+  const form = new FormData();
+  form.append("file", file);
   if (action === "convert") {
-    formData.append("outputFormat", outputFormat);
-    formData.append("watermark", watermark);
-    formData.append("renameTo", renameTo);
+    form.append("outputFormat", outputFormat);
+    if (watermark) form.append("watermark", watermark);
+    if (renameTo) form.append("renameTo", renameTo);
   }
+  if (action === "compress" && qualityInput) form.append("quality", qualityInput);
 
-  try {
-    const endpoint =
-      action === "compress"
-        ? `${API_BASE_URL}/api/v3/file/compress`
-        : `${API_BASE_URL}/api/v3/file/convert`;
+  const xhr = new XMLHttpRequest();
+  const endpoint = action === "compress" ? `${API_BASE_URL}/api/v3/file/compress` : `${API_BASE_URL}/api/v3/file/convert`;
+  xhr.open("POST", endpoint);
 
-    const res = await fetch(endpoint, { method: "POST", body: formData });
+  xhr.responseType = "blob";
+  xhr.upload.onprogress = (e) => {
+    if (e.lengthComputable) {
+      const percent = Math.round((e.loaded / e.total) * 100);
+      setStatus((action === "compress" ? "Compressing" : "Converting") + `… ${percent}%`, true, percent);
+    }
+  };
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || "Error processing file");
+  xhr.onload = () => {
+    if (xhr.status !== 200) {
+      // try parse error JSON
+      const reader = new FileReader();
+      reader.onload = () => {
+        let text = reader.result || "";
+        try {
+          const j = JSON.parse(text);
+          alert("Server error: " + (j.error || j.message || JSON.stringify(j)));
+        } catch {
+          alert("Server error: " + (xhr.statusText || "Unknown"));
+        }
+        setStatus("Error processing file", false, 0);
+      };
+      reader.readAsText(xhr.response || new Blob());
+      return;
     }
 
-    const blob = await res.blob();
+    // successful => get filename from headers (Content-Disposition) or build one
+    const cd = xhr.getResponseHeader("content-disposition") || "";
+    let filename = "";
+    const m = cd.match(/filename="?([^"]+)"?/);
+    if (m && m[1]) filename = m[1];
 
-    // File size info
-    const originalSize = (file.size / 1024).toFixed(1);
-    const newSize = (blob.size / 1024).toFixed(1);
+    if (!filename) {
+      const base = file.name.replace(/\.[^/.]+$/, "");
+      const suffix = action === "compress" ? "_compressed" : "_converted";
+      // infer extension from output header content-type
+      const ctype = xhr.getResponseHeader("content-type") || "";
+      let ext = file.name.split(".").pop();
+      if (action === "convert" && outputFormat) ext = outputFormat;
+      filename = `${base}${suffix}.${ext}`;
+    }
 
-    const downloadUrl = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = downloadUrl;
+    const blob = xhr.response;
+    // sizes (KB)
+    const originalKB = (file.size / 1024).toFixed(1);
+    const newKB = (blob.size / 1024).toFixed(1);
 
-    const suffix = action === "compress" ? "_compressed" : "_converted";
-    const cleanName = file.name.replace(/\.[^/.]+$/, "");
-    a.download = `${cleanName}${suffix}.${outputFormat || fileExt}`;
-    a.click();
+    downloadBlob(blob, filename);
+    setStatus(action === "compress" ? `✅ Compressed successfully — ${originalKB}KB → ${newKB}KB` : `✅ Converted successfully — ${originalKB}KB → ${newKB}KB`, false, 100);
+  };
 
-    resultText.textContent =
-      action === "compress"
-        ? `✅ Compressed successfully! Size: ${originalSize} KB → ${newSize} KB`
-        : `✅ Converted successfully! Size: ${originalSize} KB → ${newSize} KB`;
-  } catch (err) {
-    console.error("❌", err);
-    resultText.textContent =
-      "❌ Error processing the file. Please try again or check supported formats.";
-  }
-       }
+  xhr.onerror = () => {
+    setStatus("Network error. Try again.", false, 0);
+  };
+
+  xhr.send(form);
+}
+
+                               
      
 
 
