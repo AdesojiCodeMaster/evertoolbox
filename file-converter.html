@@ -317,15 +317,83 @@ input[type="text"]:focus {
 </html> 
 -->
 
-  <!-- Minimal tool HTML -->
-<div class="container">
-  <h1>EverToolbox</h1>
-  <input id="fileInput" type="file" />
-  <div>
+  <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EverToolbox — File Converter & Compressor</title>
+<style>
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #f8fafc;
+    color: #111827;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+  .container {
+    width: 100%;
+    max-width: 480px;
+    background: #ffffff;
+    padding: 32px;
+    border-radius: 1rem;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    text-align: center;
+  }
+  h1 {
+    font-size: 1.6rem;
+    margin-bottom: 1.5rem;
+    color: #111;
+  }
+  input[type="file"], select, button {
+    width: 100%;
+    margin: 0.4rem 0;
+    padding: 0.6rem;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 0.5rem;
+  }
+  button {
+    background-color: #2563eb;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover {
+    background-color: #1d4ed8;
+  }
+  #progressBox.hidden, #resultBox.hidden {
+    display: none;
+  }
+  #progressBox, #resultBox {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: 0.75rem;
+    background: #f1f5f9;
+  }
+  #statusText {
+    font-weight: 600;
+  }
+  #downloadLink {
+    color: #2563eb;
+    text-decoration: underline;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>EverToolbox Converter & Compressor</h1>
+    <input id="fileInput" type="file" />
+
     <select id="actionType">
       <option value="convert">Convert</option>
       <option value="compress">Compress</option>
     </select>
+
     <select id="formatSelect">
       <option value="pdf">PDF</option>
       <option value="jpg">JPG</option>
@@ -333,10 +401,123 @@ input[type="text"]:focus {
       <option value="txt">TXT</option>
       <option value="docx">DOCX</option>
     </select>
+
     <button id="startBtn">Start</button>
+
+    <div id="progressBox" class="hidden">
+      <p id="statusText">Processing…</p>
+    </div>
+
+    <div id="resultBox" class="hidden">
+      <p id="resultText"></p>
+      <a id="downloadLink" href="#" download>Download</a>
+    </div>
   </div>
 
-  <div id="progressBox" class="hidden"><p id="statusText">Processing…</p></div>
-  <div id="resultBox" class="hidden"><p id="resultText"></p><a id="downloadLink" href="#" download>Download</a></div>
-</div>
+  <script>
+  const API_BASE = "https://evertoolbox-backend.onrender.com/api/v3/file";
+
+  function qs(id){ return document.getElementById(id); }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const startBtn = qs("startBtn");
+    startBtn.addEventListener("click", () => handleFile(qs("actionType").value));
+  });
+
+  function setStatus(text, showProgress=false){
+    const pBox = qs("progressBox");
+    const status = qs("statusText");
+    if (status) status.textContent = text;
+    if (pBox) pBox.classList.toggle("hidden", !showProgress);
+  }
+
+  function downloadBlob(blob, filename){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+
+  async function handleFile(action){
+    const fileInput = qs("fileInput");
+    const formatSelect = qs("formatSelect");
+    const resultBox = qs("resultBox");
+    const resultText = qs("resultText");
+    const downloadLink = qs("downloadLink");
+
+    if (!fileInput || !fileInput.files.length) {
+      alert("Please select a file first.");
+      return;
+    }
+
+    const file = fileInput.files[0];
+    resultBox.classList.add("hidden");
+    setStatus("Uploading...", true);
+
+    const form = new FormData();
+    form.append("file", file);
+    if (action === "convert") form.append("outputFormat", formatSelect.value);
+
+    const endpoint = (action === "compress")
+      ? `${API_BASE.replace("/file","")}/file/compress`
+      : `${API_BASE.replace("/file","")}/file/convert`;
+
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", endpoint);
+    xhr.responseType = "blob";
+
+    xhr.upload.onprogress = e => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100);
+        setStatus(`${action === "compress" ? "Compressing" : "Converting"}... ${pct}%`, true);
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status !== 200) {
+        setStatus("Error", false);
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const j = JSON.parse(reader.result);
+            alert("Error: " + (j.error || j.message || JSON.stringify(j)));
+          } catch {
+            alert("Server returned an error.");
+          }
+        };
+        reader.readAsText(xhr.response || new Blob());
+        return;
+      }
+
+      const blob = xhr.response;
+      const cd = xhr.getResponseHeader("content-disposition") || "";
+      const match = cd.match(/filename="?([^"]+)"?/);
+      const filename = match && match[1]
+        ? match[1]
+        : `${file.name.replace(/\.[^/.]+$/, "")}_${action === "compress" ? "compressed" : "converted"}.${formatSelect.value}`;
+
+      downloadBlob(blob, filename);
+      resultBox.classList.remove("hidden");
+      resultText.textContent = `${action === "compress" ? "✅ Compressed" : "✅ Converted"} — ${(
+        file.size / 1024
+      ).toFixed(1)}KB → ${(blob.size / 1024).toFixed(1)}KB`;
+      downloadLink.href = URL.createObjectURL(blob);
+      downloadLink.download = filename;
+      setStatus("Done", false);
+    };
+
+    xhr.onerror = () => {
+      setStatus("Network error", false);
+      alert("Network error or server unavailable.");
+    };
+
+    xhr.send(form);
+  }
+  </script>
+</body>
+  </html>
   
