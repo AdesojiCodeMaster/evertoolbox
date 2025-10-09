@@ -316,208 +316,234 @@ input[type="text"]:focus {
 </body>
 </html> 
 -->
-
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>EverToolbox — File Converter & Compressor</title>
-<style>
-  body {
-    font-family: 'Inter', system-ui, sans-serif;
-    background: #f8fafc;
-    color: #111827;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    min-height: 100vh;
-    padding: 40px 20px;
-  }
-  .container {
-    width: 100%;
-    max-width: 480px;
-    background: #ffffff;
-    padding: 32px;
-    border-radius: 1rem;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-    text-align: center;
-  }
-  h1 {
-    font-size: 1.6rem;
-    margin-bottom: 1.5rem;
-    color: #111;
-  }
-  input[type="file"], select, button {
-    width: 100%;
-    margin: 0.4rem 0;
-    padding: 0.6rem;
-    font-size: 1rem;
-    border: 1px solid #ccc;
-    border-radius: 0.5rem;
-  }
-  button {
-    background-color: #2563eb;
-    color: white;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  button:hover {
-    background-color: #1d4ed8;
-  }
-  #progressBox.hidden, #resultBox.hidden {
-    display: none;
-  }
-  #progressBox, #resultBox {
-    margin-top: 1rem;
-    padding: 1rem;
-    border-radius: 0.75rem;
-    background: #f1f5f9;
-  }
-  #statusText {
-    font-weight: 600;
-  }
-  #downloadLink {
-    color: #2563eb;
-    text-decoration: underline;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EverToolbox — File Converter & Compressor</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: "Poppins", sans-serif;
+    }
+
+    body {
+      margin: 0;
+      background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+
+    .container {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(15px);
+      border-radius: 16px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 500px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .tabs {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 0.7rem;
+      border-radius: 8px;
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.15);
+      transition: 0.3s;
+    }
+
+    .tab.active {
+      background: #00c6ff;
+      color: #000;
+      font-weight: 600;
+    }
+
+    input[type="file"],
+    select,
+    button {
+      width: 100%;
+      margin-top: 0.7rem;
+      padding: 0.7rem;
+      border-radius: 8px;
+      border: none;
+      font-size: 1rem;
+    }
+
+    input[type="file"] {
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+      cursor: pointer;
+    }
+
+    select {
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+    }
+
+    option {
+      color: #000;
+    }
+
+    button {
+      background: #00c6ff;
+      color: #000;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background: #00a3cc;
+    }
+
+    .status {
+      margin-top: 1.5rem;
+      text-align: center;
+    }
+
+    .status p {
+      margin: 0.5rem 0;
+    }
+
+    .download a {
+      color: #00ffcc;
+      text-decoration: underline;
+      word-break: break-all;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (max-width: 480px) {
+      h1 { font-size: 1.6rem; }
+      .container { padding: 1.5rem; }
+    }
+  </style>
 </head>
 <body>
+  <h1>⚙️ EverToolbox — File Converter & Compressor</h1>
   <div class="container">
-    <h1>EverToolbox Converter & Compressor</h1>
-    <input id="fileInput" type="file" />
-
-    <select id="actionType">
-      <option value="convert">Convert</option>
-      <option value="compress">Compress</option>
-    </select>
-
-    <select id="formatSelect">
-      <option value="pdf">PDF</option>
-      <option value="jpg">JPG</option>
-      <option value="png">PNG</option>
-      <option value="txt">TXT</option>
-      <option value="docx">DOCX</option>
-    </select>
-
-    <button id="startBtn">Start</button>
-
-    <div id="progressBox" class="hidden">
-      <p id="statusText">Processing…</p>
+    <div class="tabs">
+      <div class="tab active" id="convertTab">Convert</div>
+      <div class="tab" id="compressTab">Compress</div>
     </div>
 
-    <div id="resultBox" class="hidden">
-      <p id="resultText"></p>
-      <a id="downloadLink" href="#" download>Download</a>
+    <form id="fileForm">
+      <input type="file" id="fileInput" required />
+      <select id="formatSelect" class="">
+        <option value="" disabled selected>Select Output Format</option>
+        <option value="pdf">PDF</option>
+        <option value="jpg">JPG</option>
+        <option value="png">PNG</option>
+        <option value="webp">WEBP</option>
+      </select>
+      <button type="submit" id="actionBtn">Convert File</button>
+    </form>
+
+    <div class="status" id="statusSection">
+      <p id="statusText">Awaiting upload...</p>
+      <div class="download hidden" id="downloadSection">
+        <p id="resultType"></p>
+        <a id="downloadLink" href="#" target="_blank">Download</a>
+      </div>
     </div>
   </div>
 
   <script>
-  const API_BASE = "https://evertoolbox-backend.onrender.com/api/v3/file";
+    const backendBase = "https://evertoolbox-backend.onrender.com";
+    const convertTab = document.getElementById("convertTab");
+    const compressTab = document.getElementById("compressTab");
+    const formatSelect = document.getElementById("formatSelect");
+    const actionBtn = document.getElementById("actionBtn");
+    const statusText = document.getElementById("statusText");
+    const downloadSection = document.getElementById("downloadSection");
+    const downloadLink = document.getElementById("downloadLink");
+    const resultType = document.getElementById("resultType");
+    const fileForm = document.getElementById("fileForm");
+    const fileInput = document.getElementById("fileInput");
 
-  function qs(id){ return document.getElementById(id); }
+    let mode = "convert"; // default
 
-  document.addEventListener("DOMContentLoaded", () => {
-    const startBtn = qs("startBtn");
-    startBtn.addEventListener("click", () => handleFile(qs("actionType").value));
-  });
-
-  function setStatus(text, showProgress=false){
-    const pBox = qs("progressBox");
-    const status = qs("statusText");
-    if (status) status.textContent = text;
-    if (pBox) pBox.classList.toggle("hidden", !showProgress);
-  }
-
-  function downloadBlob(blob, filename){
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-  }
-
-  async function handleFile(action){
-    const fileInput = qs("fileInput");
-    const formatSelect = qs("formatSelect");
-    const resultBox = qs("resultBox");
-    const resultText = qs("resultText");
-    const downloadLink = qs("downloadLink");
-
-    if (!fileInput || !fileInput.files.length) {
-      alert("Please select a file first.");
-      return;
-    }
-
-    const file = fileInput.files[0];
-    resultBox.classList.add("hidden");
-    setStatus("Uploading...", true);
-
-    const form = new FormData();
-    form.append("file", file);
-    if (action === "convert") form.append("outputFormat", formatSelect.value);
-
-    const endpoint = (action === "compress")
-      ? `${API_BASE.replace("/file","")}/file/compress`
-      : `${API_BASE.replace("/file","")}/file/convert`;
-
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", endpoint);
-    xhr.responseType = "blob";
-
-    xhr.upload.onprogress = e => {
-      if (e.lengthComputable) {
-        const pct = Math.round((e.loaded / e.total) * 100);
-        setStatus(`${action === "compress" ? "Compressing" : "Converting"}... ${pct}%`, true);
-      }
+    convertTab.onclick = () => {
+      mode = "convert";
+      convertTab.classList.add("active");
+      compressTab.classList.remove("active");
+      formatSelect.classList.remove("hidden");
+      actionBtn.textContent = "Convert File";
+      statusText.textContent = "Awaiting upload...";
+      downloadSection.classList.add("hidden");
     };
 
-    xhr.onload = () => {
-      if (xhr.status !== 200) {
-        setStatus("Error", false);
-        const reader = new FileReader();
-        reader.onload = () => {
-          try {
-            const j = JSON.parse(reader.result);
-            alert("Error: " + (j.error || j.message || JSON.stringify(j)));
-          } catch {
-            alert("Server returned an error.");
-          }
-        };
-        reader.readAsText(xhr.response || new Blob());
-        return;
+    compressTab.onclick = () => {
+      mode = "compress";
+      compressTab.classList.add("active");
+      convertTab.classList.remove("active");
+      formatSelect.classList.add("hidden");
+      actionBtn.textContent = "Compress File";
+      statusText.textContent = "Awaiting upload...";
+      downloadSection.classList.add("hidden");
+    };
+
+    fileForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const file = fileInput.files[0];
+      if (!file) return alert("Please upload a file first.");
+
+      statusText.textContent = "⏳ Processing...";
+      downloadSection.classList.add("hidden");
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      if (mode === "convert") {
+        const outputFormat = formatSelect.value;
+        if (!outputFormat) return alert("Select output format!");
+        formData.append("outputFormat", outputFormat);
       }
 
-      const blob = xhr.response;
-      const cd = xhr.getResponseHeader("content-disposition") || "";
-      const match = cd.match(/filename="?([^"]+)"?/);
-      const filename = match && match[1]
-        ? match[1]
-        : `${file.name.replace(/\.[^/.]+$/, "")}_${action === "compress" ? "compressed" : "converted"}.${formatSelect.value}`;
+      const endpoint = mode === "convert" ? "/convert" : "/compress";
+      try {
+        const res = await fetch(`${backendBase}${endpoint}`, {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
 
-      downloadBlob(blob, filename);
-      resultBox.classList.remove("hidden");
-      resultText.textContent = `${action === "compress" ? "✅ Compressed" : "✅ Converted"} — ${(
-        file.size / 1024
-      ).toFixed(1)}KB → ${(blob.size / 1024).toFixed(1)}KB`;
-      downloadLink.href = URL.createObjectURL(blob);
-      downloadLink.download = filename;
-      setStatus("Done", false);
+        if (!res.ok) throw new Error(data.error || "Processing error");
+
+        statusText.textContent = `✅ ${mode === "convert" ? "Converted" : "Compressed"} Successfully!`;
+        downloadLink.href = data.downloadUrl;
+        downloadLink.textContent = data.downloadUrl;
+        resultType.textContent = mode === "convert" ? "Converted File:" : "Compressed File:";
+        downloadSection.classList.remove("hidden");
+      } catch (err) {
+        statusText.textContent = `❌ Error: ${err.message}`;
+        downloadSection.classList.add("hidden");
+      }
     };
-
-    xhr.onerror = () => {
-      setStatus("Network error", false);
-      alert("Network error or server unavailable.");
-    };
-
-    xhr.send(form);
-  }
   </script>
 </body>
   </html>
-  
+          
+    
