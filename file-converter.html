@@ -1,8 +1,10 @@
+<!--
 <!doctype html><html lang='en'><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="EverToolbox — fast, free, and elegant web utilities for creators.">
 <!-- GA4 placeholder: G-XXXXXXXXXX -->
 <!-- Search Console verification placeholder --><title>File Converter — EverToolbox</title><link rel='stylesheet' href='style.css'></head><body><header id="site-header" class="site-header" role="banner">
+<!--
   <div class="container header-inner">
     <a class="brand" href="index.html" aria-label="EverToolbox home">
       <div class="logo">ET</div>
@@ -39,14 +41,14 @@
   <!-- ==============================
      FILE CONVERTER + COMPRESSOR
      ============================== -->
-
+<!--
 <section id="file-converter-tool" class="tool-section">
-<h2 class="tool-subtitle">Easily convert or compress files directly in your browser.</h2>
+<h2 class="tool-subtitle">Easily convert or compress files directly in your browser.</h2> -->
  <!-- ==========================================================
      EverToolbox File Converter & Compressor
      Global Standard Version - Responsive, Polished, Functional
 ========================================================== -->
-
+<!--
   <div class="tool-container">
     <h2>File Converter & Compressor</h2>
     <p class="tool-subtitle">
@@ -312,6 +314,28 @@ input[type="text"]:focus {
   <script src='script.js'> </script>  
 </body>
 </html> 
+-->
 
+  <!-- Minimal tool HTML -->
+<div class="container">
+  <h1>EverToolbox</h1>
+  <input id="fileInput" type="file" />
+  <div>
+    <select id="actionType">
+      <option value="convert">Convert</option>
+      <option value="compress">Compress</option>
+    </select>
+    <select id="formatSelect">
+      <option value="pdf">PDF</option>
+      <option value="jpg">JPG</option>
+      <option value="png">PNG</option>
+      <option value="txt">TXT</option>
+      <option value="docx">DOCX</option>
+    </select>
+    <button id="startBtn">Start</button>
+  </div>
 
+  <div id="progressBox" class="hidden"><p id="statusText">Processing…</p></div>
+  <div id="resultBox" class="hidden"><p id="resultText"></p><a id="downloadLink" href="#" download>Download</a></div>
+</div>
   
