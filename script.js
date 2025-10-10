@@ -239,291 +239,93 @@ async function speakTextWithSelectedLang() {
    FILE CONVERTER (text editing + image editing before download or server convert)
    - Supports: text edit (txt->pdf via server), image edit (client-side) + server upload if user chooses server conversion
    ========================================================================== */
-(function fileConverterInit(){
-  // Support multiple ID variants to match user's html
-  const fileInput = $('fc-file') || $('fc-file-input') || $('fc-filepicker') || $('ic-file') || $('fileInput') || $('file-input');
-  const textArea = $('fc-text') || $('fc-textarea') || $('file-text');
-  const nameInput = $('fc-name') || $('file-name');
-  const formatSel = $('fc-format') || $('fc-format-select') || $('ic-format') || $('file-format');
-  const convertBtn = $('fc-run') || $('fc-convert') || $('convertBtn') || $('fc-run-btn') || $('fc-run-btn');
-  const outputArea = $('fc-output') || $('fc-output-area') || $('file-output');
-  const previewImg = $('fc-output') || $('ic-output') || $('file-preview');
 
-  // dynamic editor panel for images (reused also by image section)
-  function createImageEditorPanel(previewEl) {
-    // create only once
-    if (document.getElementById('ft-image-editor')) return document.getElementById('ft-image-editor');
-    const container = document.createElement('div');
-    container.id = 'ft-image-editor';
-    container.style.marginTop = '10px';
-    container.innerHTML = `
-      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-        <label>Brightness: <input id="ft-brightness" type="range" min="-100" max="100" value="0"/></label>
-        <label>Overlay text: <input id="ft-overlay-text" type="text" placeholder="Text"/></label>
-        <label>Text color: <input id="ft-overlay-color" type="color" value="#ffffff"/></label>
-        <label>Font size: <input id="ft-font-size" type="number" value="36" style="width:80px"/></label>
-        <button id="ft-apply" class="btn">Apply Edits</button>
-        <button id="ft-reset" class="btn">Reset</button>
-        <button id="ft-download" class="btn">Download Edited Image</button>
-        <button id="ft-send-server" class="btn">Send to Server (convert)</button>
-      </div>
-    `;
-    try { previewEl.parentNode.insertBefore(container, previewEl.nextSibling); } catch(e){ document.body.appendChild(container); }
-    return container;
+
+// script.js - minimal, lightweight uploader + preview + direct download
+const drop = document.getElementById('drop');
+const preview = document.getElementById('preview');
+const uploadBtn = document.getElementById('uploadBtn');
+const target = document.getElementById('target');
+const quality = document.getElementById('quality');
+
+let fileChosen = null;
+
+// helpers
+function setPreviewFile(file) {
+  preview.innerHTML = '';
+  fileChosen = file;
+  const info = document.createElement('div');
+  info.textContent = `${file.name} — ${Math.round(file.size/1024)} KB`;
+  preview.appendChild(info);
+
+  if (file.type.startsWith('image/')) {
+    const img = document.createElement('img');
+    img.style.maxWidth = '280px';
+    img.style.marginTop = '8px';
+    img.src = URL.createObjectURL(file);
+    preview.appendChild(img);
   }
+}
 
-  async function fileToText(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onerror = reject;
-      reader.onload = () => resolve(reader.result);
-      reader.readAsText(file);
-    });
+// file selection
+drop.addEventListener('click', () => {
+  const ip = document.createElement('input'); ip.type = 'file';
+  ip.onchange = () => { if (ip.files && ip.files[0]) setPreviewFile(ip.files[0]); };
+  ip.click();
+});
+drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.style.borderColor = '#08f'; });
+drop.addEventListener('dragleave', () => { drop.style.borderColor = '#ccc'; });
+drop.addEventListener('drop', (e) => {
+  e.preventDefault();
+  drop.style.borderColor = '#ccc';
+  if (e.dataTransfer.files && e.dataTransfer.files[0]) setPreviewFile(e.dataTransfer.files[0]);
+});
+
+// upload & process
+uploadBtn.addEventListener('click', async () => {
+  if (!fileChosen) return alert('Please select one file to upload');
+
+  // same-format check (quick client-side tip)
+  const currentExt = (fileChosen.name.split('.').pop() || '').toLowerCase();
+  if (currentExt === target.value) return alert('File already in selected format');
+
+  const fd = new FormData();
+  fd.append('file', fileChosen);
+  fd.append('targetFormat', target.value);
+  fd.append('quality', quality.value);
+
+  // optional: apply client-side lightweight edits (example: none by default)
+  // fd.append('edits', JSON.stringify({...}));
+
+  try {
+    uploadBtn.disabled = true; uploadBtn.textContent = 'Processing...';
+    const resp = await fetch('/api/tools/file/process', { method: 'POST', body: fd });
+    if (!resp.ok) {
+      const j = await resp.json().catch(()=>null);
+      throw new Error((j && j.error) ? j.error : `Server returned ${resp.status}`);
+    }
+
+    // create blob and download directly
+    const blob = await resp.blob();
+    const disposition = resp.headers.get('Content-Disposition') || '';
+    let filename = 'download';
+    const m = disposition.match(/filename="?([^"]+)"?/);
+    if (m && m[1]) filename = m[1];
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    a.remove(); URL.revokeObjectURL(url);
+
+  } catch (err) {
+    alert('Error: ' + (err && err.message ? err.message : err));
+    console.error(err);
+  } finally {
+    uploadBtn.disabled = false; uploadBtn.textContent = 'Upload & Process';
   }
+});
 
-  async function fileToDataURL(file) {
-    return new Promise((resolve,reject) => {
-      const r = new FileReader();
-      r.onerror = reject;
-      r.onload = () => resolve(r.result);
-      r.readAsDataURL(file);
-    });
-  }
 
-  // render image on canvas and apply edits -> returns blob
-  async function renderImageWithEdits(fileOrDataURL, opts={}) {
-    // fileOrDataURL can be File or dataURL string
-    return new Promise((resolve,reject) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onerror = reject;
-      img.onload = async () => {
-        try {
-          // compute scaled dims if opts.width/height specified
-          let w = img.width, h = img.height;
-          if (opts.maxSize) {
-            const s = Math.min(1, opts.maxSize / Math.max(w,h));
-            if (s < 1) { w = Math.round(w*s); h = Math.round(h*s); }
-          }
-          const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, w, h);
 
-          // brightness
-          if (opts.brightness && opts.brightness !== 0) {
-            const imgd = ctx.getImageData(0,0,w,h); const d = imgd.data;
-            const delta = parseInt(opts.brightness,10);
-            for (let i=0;i<d.length;i+=4){ d[i]=Math.min(255,Math.max(0,d[i]+delta)); d[i+1]=Math.min(255,Math.max(0,d[i+1]+delta)); d[i+2]=Math.min(255,Math.max(0,d[i+2]+delta)); }
-            ctx.putImageData(imgd,0,0);
-          }
-
-          // overlay
-          if (opts.overlayOpacity && opts.overlayOpacity>0) {
-            ctx.fillStyle = opts.overlayColor || '#000';
-            ctx.globalAlpha = opts.overlayOpacity;
-            ctx.fillRect(0,0,w,h);
-            ctx.globalAlpha = 1;
-          }
-
-          // text
-          if (opts.overlayText && opts.overlayText.trim()) {
-            ctx.font = `${opts.fontSize||36}px sans-serif`;
-            ctx.fillStyle = opts.overlayTextColor || '#fff';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(opts.overlayText, w/2, h/2);
-          }
-
-          // export as blob
-          const mime = (opts.mime || 'image/png');
-          canvas.toBlob(blob => {
-            if (!blob) return reject(new Error('Failed to create blob'));
-            resolve({ blob, dataURL: canvas.toDataURL(mime) });
-          }, mime, opts.quality || 0.92);
-        } catch(e){ reject(e); }
-      };
-      if (typeof fileOrDataURL === 'string') img.src = fileOrDataURL; else img.src = URL.createObjectURL(fileOrDataURL);
-    });
-  }
-
-  // reset preview
-  function hidePreview(p) { if (!p) return; p.src=''; p.style.display='none'; }
-
-  if (!convertBtn) return;
-
-  // file selected -> for text files populate textarea for editing; for images show preview and editor
-  if (fileInput) {
-    fileInput.addEventListener('change', async (e) => {
-      const f = e.target.files && e.target.files[0];
-      if (!f) { if (textArea) textArea.value=''; hidePreview(previewImg); return; }
-      // text
-      if (f.type.startsWith('text/') || /\.txt$/i.test(f.name)) {
-        // load into textarea so user can edit before converting/downloading
-        if (textArea) {
-          try {
-            const txt = await fileToText(f);
-            textArea.value = txt;
-            if (outputArea) outputArea.innerHTML = `<p>Text file loaded. Edit below then click Convert.</p>`;
-          } catch(err) { console.error('read text failed', err); }
-        }
-        hidePreview(previewImg);
-        return;
-      }
-      // image
-      if (f.type.startsWith('image/') || /\.(jpe?g|png|webp|gif)$/i.test(f.name)) {
-        try {
-          const dataUrl = await fileToDataURL(f);
-          if (previewImg) { previewImg.src = dataUrl; previewImg.style.display='block'; }
-          // ensure image editor UI exists
-          const editor = createImageEditorPanel(previewImg);
-          // attach editor controls
-          attachImageEditorHandlers(editor, f);
-        } catch(err) { console.error('image preview failed', err); }
-        if (outputArea) outputArea.innerHTML = '<p>Image loaded. Use editor to adjust before download or server convert.</p>';
-        return;
-      }
-      // other files
-      hidePreview(previewImg);
-      if (outputArea) outputArea.innerHTML = `<p>File loaded: ${f.name} (${Math.round(f.size/1024)} KB). Select a target format and click Convert (server conversion required for some formats).</p>`;
-    });
-  }
-
-  // attach editor handlers - created per-file context (replaces redundant listeners)
-  function attachImageEditorHandlers(editorEl, originalFile) {
-    if (!editorEl) return;
-    const brightnessEl = $('ft-brightness');
-    const overlayTextEl = $('ft-overlay-text');
-    const overlayColorEl = $('ft-overlay-color');
-    const fontSizeEl = $('ft-font-size');
-    const applyBtn = $('ft-apply');
-    const resetBtn = $('ft-reset');
-    const downloadBtn = $('ft-download');
-    const sendServerBtn = $('ft-send-server');
-
-    // Store last preview dataURL for reset
-    let lastOriginalDataURL = null;
-    (async()=>{
-      try { lastOriginalDataURL = await fileToDataURL(originalFile); } catch(e){console.error(e);}
-    })();
-
-    on(applyBtn, 'click', async ()=>{
-      try {
-        const opts = {
-          brightness: brightnessEl ? parseInt(brightnessEl.value||'0',10) : 0,
-          overlayText: overlayTextEl ? overlayTextEl.value : '',
-          overlayTextColor: overlayColorEl ? overlayColorEl.value : '#fff',
-          overlayColor: '#000000',
-          overlayOpacity: 0,
-          fontSize: fontSizeEl ? parseInt(fontSizeEl.value||'36',10) : 36,
-          mime: 'image/png',
-          quality: 0.92,
-          maxSize: 2000
-        };
-        const res = await renderImageWithEdits(lastOriginalDataURL || originalFile, opts);
-        if (previewImg) { previewImg.src = res.dataURL; previewImg.style.display='block'; }
-        if (outputArea) outputArea.innerHTML = `<p>Edits applied. Click Download Edited Image to save locally or "Send to Server (convert)" for backend conversion.</p>`;
-        // save produced blob in element for download/send
-        previewImg._editedBlob = res.blob;
-      } catch(err){ console.error('apply edits failed', err); alert('Apply edits failed'); }
-    });
-    on(resetBtn, 'click', ()=>{
-      if (lastOriginalDataURL) previewImg.src = lastOriginalDataURL;
-      previewImg._editedBlob = null;
-      if (outputArea) outputArea.innerHTML = `<p>Reset to original.</p>`;
-    });
-    on(downloadBtn, 'click', async ()=>{
-      try {
-        let blob = previewImg._editedBlob;
-        if (!blob) {
-          // produce blob from current preview or original
-          const dataURL = previewImg.src || (lastOriginalDataURL || '');
-          if (!dataURL) return alert('No edited image available to download.');
-          const res = await fetch(dataURL); blob = await res.blob();
-        }
-        downloadBlob(blob, `image-edited.png`);
-      } catch(err){ console.error('download edited failed', err); alert('Download failed'); }
-    });
-    on(sendServerBtn, 'click', async ()=>{
-      try {
-        let blob = previewImg._editedBlob;
-        if (!blob) {
-          if (!previewImg.src) return alert('No edited image to send.');
-          const res = await fetch(previewImg.src); blob = await res.blob();
-        }
-        // prepare formdata and send to server for conversion using selected target format
-        const fd = new FormData();
-        fd.append('file', blob, (originalFile && originalFile.name) ? originalFile.name : 'edited.png');
-        const targetFormat = formatSel && formatSel.value ? formatSel.value : 'png';
-        fd.append('format', targetFormat);
-        // attach any extra options if available
-        const resp = await fetchWithTimeout(`${API_BASE}/api/convert-image`, { method:'POST', body: fd }, 30000);
-        if (!resp.ok) { const j = await safeJSON(resp); throw new Error((j && j.error) ? j.error : `Server ${resp.status}`); }
-        const serverBlob = await resp.blob();
-        downloadBlob(serverBlob, `server-converted.${targetFormat}`);
-      } catch(err){ console.error('send server failed', err); alert('Server conversion failed: '+(err.message||err)); }
-    });
-  }
-
-  // do conversion handler (top-level)
-  on(convertBtn, 'click', async ()=>{
-    try {
-      const f = fileInput && fileInput.files && fileInput.files[0];
-      const target = formatSel && formatSel.value ? formatSel.value : null;
-      // If user edited text area and wants to convert text -> create blob from textarea
-      if (textArea && textArea.value && (!f || (f && (f.type.startsWith('text/') || /\.txt$/i.test(f.name))))) {
-        const name = (nameInput && nameInput.value) ? nameInput.value : (f ? f.name.replace(/\.[^/.]+$/,'')+'.txt' : 'document.txt');
-        const textBlob = new Blob([textArea.value], { type: 'text/plain' });
-        // if target is 'pdf' or other, send to server
-        if (target && target !== 'txt') {
-          const fd = new FormData(); fd.append('file', textBlob, name); fd.append('targetExt', target.startsWith('.')?target:`.${target}`);
-          const resp = await fetchWithTimeout(`${API_BASE}/api/convert-doc`, { method:'POST', body: fd }, 300000);
-          if (!resp.ok) { const j = await safeJSON(resp); throw new Error((j && j.error) ? j.error : `Server ${resp.status}`); }
-          const blob = await resp.blob(); downloadBlob(blob, (name.replace(/\.[^/.]+$/,'') + (target.startsWith('.')?target:`.${target}`)));
-          if (outputArea) outputArea.innerHTML = `<p>Server conversion completed.</p>`;
-        } else {
-          // just download txt
-          downloadBlob(textBlob, name);
-        }
-        return;
-      }
-
-      // If file exists and is image -> prefer client-side edit or create blob then possibly server convert
-      if (f && f.type.startsWith('image/')) {
-        // if preview has edited blob, download it locally or send to server depending on target
-        const previewEditedBlob = (previewImg && previewImg._editedBlob) ? previewImg._editedBlob : null;
-        if (!target || target === 'png' || target === 'jpg' || target === 'jpeg' || target==='webp') {
-          // if user edited, download edited; otherwise client convert using canvas
-          if (previewEditedBlob) { downloadBlob(previewEditedBlob, `image-edited.${target||'png'}`); return; }
-          // try client conversion
-          try {
-            const { blob } = await renderImageWithEdits(f, { mime: `image/${target||'png'}`, quality: 0.92, maxSize: 2000 });
-            downloadBlob(blob, `converted.${target||'png'}`);
-            return;
-          } catch(e) { console.warn('client image convert failed, will try server', e); }
-        }
-        // fallback to server convert
-        const fd = new FormData(); fd.append('file', previewEditedBlob || f); fd.append('targetExt', target? (target.startsWith('.')?target:`.${target}`) : '.png');
-        const resp = await fetchWithTimeout(`${API_BASE}/api/convert-doc`, { method:'POST', body: fd }, 300000);
-        if (!resp.ok) { const j = await safeJSON(resp); throw new Error((j && j.error)?j.error:`Server ${resp.status}`); }
-        const blob = await resp.blob(); downloadBlob(blob, `converted.${target||'out'}`);
-        return;
-      }
-
-      // Other generic files -> prefer server conversion (docx,pdf,etc)
-      if (f) {
-        if (!target) return alert('Choose a target format for conversion.');
-        const fd = new FormData(); fd.append('file', f); fd.append('targetExt', target.startsWith('.')?target:`.${target}`);
-        const resp = await fetchWithTimeout(`${API_BASE}/api/convert-doc`, { method:'POST', body: fd }, 300000);
-        if (!resp.ok) { const j = await safeJSON(resp); throw new Error((j && j.error)?j.error:`Server ${resp.status}`); }
-        const blob = await resp.blob(); downloadBlob(blob, f.name.replace(/\.[^/.]+$/,'') + (target.startsWith('.')?target:`.${target}`));
-        return;
-      }
-
-      alert('No file or editable text found to convert.');
-    } catch(err) { console.error('convert error',err); alert('Conversion failed: '+(err.message||err)); }
-  });
-
-})(); // end fileConverterInit
 
 /* =========================================================================
    IMAGE CONVERTER / THUMBNAIL (page-level - similar editor but with explicit thumb option)
