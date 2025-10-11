@@ -318,30 +318,289 @@ input[type="text"]:focus {
 -->
 
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EverToolbox File Converter + Compressor</title>
+  <style>
+    :root {
+      --primary: #0078ff;
+      --secondary: #00b894;
+      --bg: #f9fafb;
+      --card-bg: #fff;
+      --shadow: 0 4px 15px rgba(0,0,0,0.08);
+    }
 
-  <section id="fileConverterTool" class="tool-section">
-  <h2>File Converter + Compressor</h2>
-  <input type="file" id="fileInput" accept="*" />
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      margin: 0;
+      padding: 2rem;
+      color: #333;
+    }
 
-  <label>Target Format:</label>
-  <select id="formatSelect">
-    <option value="jpg">JPG</option>
-    <option value="png">PNG</option>
-    <option value="webp">WEBP</option>
-    <option value="pdf">PDF</option>
-    <option value="txt">TXT</option>
-    <option value="docx">DOCX</option>
-    <option value="mp3">MP3</option>
-    <option value="wav">WAV</option>
-  </select>
+    .container {
+      max-width: 700px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      border-radius: 1rem;
+      box-shadow: var(--shadow);
+      padding: 2rem;
+    }
 
-  <label>Quality (1–100):</label>
-  <input type="number" id="qualityInput" min="1" max="100" value="70" />
+    h1 {
+      text-align: center;
+      color: var(--primary);
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+    }
 
-  <div class="btn-group">
-    <button id="convertBtn">Convert</button>
-    <button id="compressBtn">Compress</button>
+    .drop-zone {
+      border: 2px dashed var(--primary);
+      border-radius: 1rem;
+      padding: 2rem;
+      text-align: center;
+      color: #555;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .drop-zone:hover {
+      background: #eef6ff;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .output-format {
+      margin-top: 1rem;
+      width: 100%;
+      padding: 0.5rem;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+
+    .btns {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    button {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.7rem 1.5rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: var(--secondary);
+    }
+
+    .preview {
+      margin-top: 1.5rem;
+      text-align: center;
+    }
+
+    .progress {
+      margin-top: 1rem;
+      height: 8px;
+      background: #e5e5e5;
+      border-radius: 4px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .progress-bar {
+      height: 8px;
+      background: var(--primary);
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    .message {
+      margin-top: 1rem;
+      text-align: center;
+      font-size: 0.9rem;
+      color: #444;
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 2rem;
+      font-size: 0.85rem;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>EverToolbox File Converter + Compressor</h1>
+
+    <label class="drop-zone" id="dropZone">
+      <span id="dropText">Drop file here or click to upload</span>
+      <input type="file" id="fileInput" />
+    </label>
+
+    <select id="outputFormat" class="output-format">
+      <option value="">Select output format</option>
+      <optgroup label="Documents">
+        <option value="txt">TXT</option>
+        <option value="docx">DOCX</option>
+        <option value="pdf">PDF</option>
+        <option value="html">HTML</option>
+        <option value="md">Markdown</option>
+      </optgroup>
+      <optgroup label="Images">
+        <option value="jpg">JPG</option>
+        <option value="png">PNG</option>
+        <option value="webp">WEBP</option>
+        <option value="svg">SVG</option>
+      </optgroup>
+      <optgroup label="Audio">
+        <option value="mp3">MP3</option>
+        <option value="wav">WAV</option>
+      </optgroup>
+      <optgroup label="Video">
+        <option value="mp4">MP4</option>
+        <option value="webm">WEBM</option>
+      </optgroup>
+    </select>
+
+    <div class="btns">
+      <button id="convertBtn">Convert</button>
+      <button id="compressBtn">Compress</button>
+    </div>
+
+    <div class="progress" id="progress">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="message" id="message"></div>
+
+    <div class="preview" id="preview"></div>
   </div>
 
-  <div id="result"></div>
-</section>
+  <footer>
+    © 2025 EverToolbox — Smart, Fast & Secure File Processing
+  </footer>
+
+  <script>
+    const backendURL = 'https://evertoolbox-backend.onrender.com/api/tools/file';
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const outputFormat = document.getElementById('outputFormat');
+    const message = document.getElementById('message');
+    const progress = document.getElementById('progress');
+    const progressBar = document.getElementById('progressBar');
+    const preview = document.getElementById('preview');
+    const convertBtn = document.getElementById('convertBtn');
+    const compressBtn = document.getElementById('compressBtn');
+
+    let selectedFile = null;
+
+    // --- Drag & Drop ---
+    dropZone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', e => {
+      selectedFile = e.target.files[0];
+      updateDropText();
+      lazyPreview(selectedFile);
+    });
+
+    dropZone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropZone.style.background = '#eef6ff';
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.style.background = 'transparent';
+    });
+
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      selectedFile = e.dataTransfer.files[0];
+      updateDropText();
+      lazyPreview(selectedFile);
+    });
+
+    function updateDropText() {
+      document.getElementById('dropText').innerText = selectedFile ? selectedFile.name : 'Drop file here or click to upload';
+    }
+
+    // --- Lazy preview ---
+    function lazyPreview(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      if (file.type.startsWith('image/')) {
+        reader.onload = e => preview.innerHTML = `<img src="${e.target.result}" style="max-width:100%;border-radius:8px;">`;
+        reader.readAsDataURL(file);
+      } else if (file.type.startsWith('audio/')) {
+        reader.onload = e => preview.innerHTML = `<audio controls src="${e.target.result}" style="width:100%;"></audio>`;
+        reader.readAsDataURL(file);
+      } else if (file.type.startsWith('video/')) {
+        reader.onload = e => preview.innerHTML = `<video controls src="${e.target.result}" style="width:100%;border-radius:8px;"></video>`;
+        reader.readAsDataURL(file);
+      } else {
+        preview.innerHTML = `<p style="color:#555;">${file.name}</p>`;
+      }
+    }
+
+    // --- Conversion / Compression ---
+    async function handleProcess(type) {
+      if (!selectedFile) return showMessage('Please upload a file first.', true);
+      const format = outputFormat.value;
+      if (!format) return showMessage('Please select an output format.', true);
+
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('action', type);
+      formData.append('outputFormat', format);
+
+      progress.style.display = 'block';
+      progressBar.style.width = '10%';
+      showMessage(`${type === 'convert' ? 'Converting' : 'Compressing'} your file...`);
+
+      try {
+        const response = await fetch(`${backendURL}/${type}`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) throw new Error('Processing failed.');
+
+        const blob = await response.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `output.${format}`;
+        a.click();
+
+        progressBar.style.width = '100%';
+        showMessage('✅ File ready! Download started.');
+      } catch (err) {
+        console.error(err);
+        showMessage('❌ Error during processing. Try again.', true);
+      } finally {
+        progress.style.display = 'none';
+      }
+    }
+
+    function showMessage(text, isError = false) {
+      message.textContent = text;
+      message.style.color = isError ? 'red' : 'green';
+    }
+
+    convertBtn.addEventListener('click', () => handleProcess('convert'));
+    compressBtn.addEventListener('click', () => handleProcess('compress'));
+  </script>
+</body>
+  </html>
+  
+
+  
