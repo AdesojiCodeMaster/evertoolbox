@@ -319,12 +319,10 @@ input[type="text"]:focus {
 
 
 
-  
-  
   <section id="fileConverterTool" class="tool-section">
   <h2>File Converter + Compressor</h2>
   <input type="file" id="fileInput" accept="*" />
-  
+
   <label>Target Format:</label>
   <select id="formatSelect">
     <option value="jpg">JPG</option>
@@ -340,8 +338,10 @@ input[type="text"]:focus {
   <label>Quality (1–100):</label>
   <input type="number" id="qualityInput" min="1" max="100" value="70" />
 
-  <button id="convertBtn">Convert / Compress</button>
+  <div class="btn-group">
+    <button id="convertBtn">Convert</button>
+    <button id="compressBtn">Compress</button>
+  </div>
 
   <div id="result"></div>
-      </section>
-  
+</section>
