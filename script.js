@@ -241,89 +241,82 @@ async function speakTextWithSelectedLang() {
    ========================================================================== */
 
 
-// script.js - minimal, lightweight uploader + preview + direct download
-const drop = document.getElementById('drop');
-const preview = document.getElementById('preview');
-const uploadBtn = document.getElementById('uploadBtn');
-const target = document.getElementById('target');
-const quality = document.getElementById('quality');
-
-let fileChosen = null;
-
-// helpers
-function setPreviewFile(file) {
-  preview.innerHTML = '';
-  fileChosen = file;
-  const info = document.createElement('div');
-  info.textContent = `${file.name} — ${Math.round(file.size/1024)} KB`;
-  preview.appendChild(info);
-
-  if (file.type.startsWith('image/')) {
-    const img = document.createElement('img');
-    img.style.maxWidth = '280px';
-    img.style.marginTop = '8px';
-    img.src = URL.createObjectURL(file);
-    preview.appendChild(img);
-  }
-}
-
-// file selection
-drop.addEventListener('click', () => {
-  const ip = document.createElement('input'); ip.type = 'file';
-  ip.onchange = () => { if (ip.files && ip.files[0]) setPreviewFile(ip.files[0]); };
-  ip.click();
-});
-drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.style.borderColor = '#08f'; });
-drop.addEventListener('dragleave', () => { drop.style.borderColor = '#ccc'; });
-drop.addEventListener('drop', (e) => {
-  e.preventDefault();
-  drop.style.borderColor = '#ccc';
-  if (e.dataTransfer.files && e.dataTransfer.files[0]) setPreviewFile(e.dataTransfer.files[0]);
-});
-
-// upload & process
-uploadBtn.addEventListener('click', async () => {
-  if (!fileChosen) return alert('Please select one file to upload');
-
-  // same-format check (quick client-side tip)
-  const currentExt = (fileChosen.name.split('.').pop() || '').toLowerCase();
-  if (currentExt === target.value) return alert('File already in selected format');
-
-  const fd = new FormData();
-  fd.append('file', fileChosen);
-  fd.append('targetFormat', target.value);
-  fd.append('quality', quality.value);
-
-  // optional: apply client-side lightweight edits (example: none by default)
-  // fd.append('edits', JSON.stringify({...}));
-
-  try {
-    uploadBtn.disabled = true; uploadBtn.textContent = 'Processing...';
-    const resp = await fetch('/api/tools/file/process', { method: 'POST', body: fd });
-    if (!resp.ok) {
-      const j = await resp.json().catch(()=>null);
-      throw new Error((j && j.error) ? j.error : `Server returned ${resp.status}`);
+// === FILE CONVERTER + COMPRESSOR TOOL ===
+// Lazy-load trigger (tool only initializes when visible)
+document.addEventListener("DOMContentLoaded", () => {
+  const tool = document.getElementById("fileConverterTool");
+  if (!tool) return;
+  const observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) {
+      initFileConverterTool();
+      observer.disconnect();
     }
-
-    // create blob and download directly
-    const blob = await resp.blob();
-    const disposition = resp.headers.get('Content-Disposition') || '';
-    let filename = 'download';
-    const m = disposition.match(/filename="?([^"]+)"?/);
-    if (m && m[1]) filename = m[1];
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click();
-    a.remove(); URL.revokeObjectURL(url);
-
-  } catch (err) {
-    alert('Error: ' + (err && err.message ? err.message : err));
-    console.error(err);
-  } finally {
-    uploadBtn.disabled = false; uploadBtn.textContent = 'Upload & Process';
-  }
+  });
+  observer.observe(tool);
 });
 
+function initFileConverterTool() {
+  const uploadInput = document.getElementById("fileInput");
+  const formatSelect = document.getElementById("formatSelect");
+  const qualityInput = document.getElementById("qualityInput");
+  const convertBtn = document.getElementById("convertBtn");
+  const resultDiv = document.getElementById("result");
+
+  let selectedFile = null;
+
+  uploadInput.addEventListener("change", (e) => {
+    selectedFile = e.target.files[0];
+    if (selectedFile) {
+      resultDiv.textContent = `Selected: ${selectedFile.name} (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB)`;
+    }
+  });
+
+  convertBtn.addEventListener("click", async () => {
+    if (!selectedFile) return alert("Please upload a file first.");
+
+    const targetFormat = formatSelect.value;
+    const ext = selectedFile.name.split(".").pop().toLowerCase();
+    if (ext === targetFormat.toLowerCase())
+      return alert("File is already in the selected format.");
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    formData.append("targetFormat", targetFormat);
+    formData.append("quality", qualityInput.value || 70);
+
+    resultDiv.textContent = "Processing file... ⏳";
+
+    try {
+      const res = await fetch("https://evertoolbox-backend.onrender.com/api/tools/file/process", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error("Conversion failed.");
+
+      // Extract filename from Content-Disposition
+      const disposition = res.headers.get("Content-Disposition");
+      const filenameMatch = disposition && disposition.match(/filename="(.+)"/);
+      const filename = filenameMatch ? filenameMatch[1] : `converted.${targetFormat}`;
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.textContent = "Download Converted File";
+      link.className = "download-btn";
+
+      resultDiv.innerHTML = "";
+      resultDiv.appendChild(link);
+    } catch (err) {
+      console.error(err);
+      resultDiv.textContent = "❌ Error converting file.";
+    }
+  });
+}
+   
 
 
 
