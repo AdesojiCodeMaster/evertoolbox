@@ -319,209 +319,534 @@ input[type="text"]:focus {
 
 
 
-
-
-
-    <!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>EverToolbox — File Converter & Compressor</title>
-  <style>
-    :root{
-      --bg:#f6f8fb; --card:#fff; --accent:#0b75ff; --accent-2:#1fb97a; --muted:#6b7280;
-    }
-    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:#111}
-    .wrap{max-width:880px;margin:36px auto;padding:22px;background:var(--card);border-radius:12px;box-shadow:0 8px 30px rgba(20,30,60,0.06)}
-    h1{margin:0 0 12px;font-weight:600;color:var(--accent)}
-    .sub{color:var(--muted);margin-bottom:18px}
-    .row{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
-    .col{flex:1;min-width:220px}
-    .drop{border:2px dashed rgba(11,117,255,0.18);padding:18px;border-radius:10px;text-align:center;background:#fbfdff;cursor:pointer}
-    .drop.drag{background:#eef7ff}
-    .small{font-size:0.92rem;color:var(--muted)}
-    input[type=file]{display:none}
-    select,input[type=number]{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ee}
-    .controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
-    button{background:var(--accent);color:#fff;border:0;padding:10px 16px;border-radius:10px;font-weight:600;cursor:pointer}
-    button.secondary{background:#475569}
-    .preview{margin-top:18px;border-radius:8px;padding:12px;background:#fbfbfc;border:1px solid #f0f3f7}
-    .progress{height:8px;background:#e6eefb;border-radius:6px;overflow:hidden;margin-top:12px;display:none}
-    .bar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-2))}
-    .msg{margin-top:12px;color:#0b75ff}
-    .error{margin-top:12px;color:#d33}
-    footer{margin-top:20px;font-size:0.85rem;color:var(--muted);text-align:center}
-    @media (max-width:640px){ .row{flex-direction:column} }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>EverToolbox — File Converter · Compressor · Editor</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<style>
+  /* ---------- Theme & Layout ---------- */
+  :root{
+    --bg:#0f1724; --card:#0b1220; --muted:#9aa7bf; --accent:#06b6d4; --accent-2:#7c3aed;
+    --glass: rgba(255,255,255,0.03);
+    --radius:12px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:linear-gradient(180deg,#071428,#071a2b);font-family:Inter,ui-sans-serif,system-ui,Arial;color:#e6eef8;padding:28px;display:flex;align-items:flex-start;justify-content:center}
+  .wrap{width:100%;max-width:980px;background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));border-radius:var(--radius);padding:20px;box-shadow:0 10px 40px rgba(2,6,23,0.6)}
+  h1{margin:0 0 6px;color:var(--accent);font-size:20px}
+  p.lead{margin:0 0 18px;color:var(--muted);font-size:13px}
+
+  .grid{display:grid;grid-template-columns:380px 1fr;gap:18px}
+  @media (max-width:900px){ .grid{grid-template-columns:1fr} }
+
+  /* left panel */
+  .panel{background:var(--card);padding:14px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
+  .drop{border:2px dashed rgba(255,255,255,0.04);padding:12px;border-radius:10px;text-align:center;cursor:pointer;transition:all .18s}
+  .drop.drag{background:rgba(255,255,255,0.02);transform:translateY(-2px)}
+  .small{font-size:13px;color:var(--muted)}
+  input[type=file]{display:none}
+
+  label.select,label.input{display:block;margin-top:10px}
+  select,input[type=number],input[type=text]{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:var(--muted)}
+  .row{display:flex;gap:8px;margin-top:10px}
+  button{background:linear-gradient(90deg,var(--accent),var(--accent-2));border:0;color:#042a2e;padding:9px 14px;border-radius:10px;font-weight:600;cursor:pointer}
+  button.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
+  .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+
+  /* right panel */
+  .stage{background:linear-gradient(180deg,rgba(255,255,255,0.01),rgba(255,255,255,0.00));padding:12px;border-radius:10px;min-height:360px}
+  canvas{max-width:100%;border-radius:8px;display:block;background:#03121a}
+  .preview-media{max-width:100%;border-radius:8px;display:block}
+  .meta{margin-top:8px;color:var(--muted);font-size:13px}
+
+  .progress{height:10px;background:rgba(255,255,255,0.03);border-radius:8px;overflow:hidden;margin-top:12px;display:none}
+  .progress > i{display:block;height:100%;width:0%;background:linear-gradient(90deg,#06b6d4,#7c3aed);transition:width .2s}
+
+  .message{margin-top:10px;color:var(--muted);font-size:13px}
+  .error{margin-top:10px;color:#ffb4b4;font-weight:600}
+  .success{margin-top:10px;color:#9fe8c6;font-weight:700}
+
+  .control-row{display:flex;gap:8px;align-items:center;margin-top:10px}
+  .small-muted{font-size:12px;color:var(--muted)}
+  footer{margin-top:16px;text-align:center;font-size:12px;color:rgba(255,255,255,0.45)}
+</style>
 </head>
 <body>
   <div class="wrap" role="main">
-    <h1>File Converter + Compressor</h1>
-    <div class="sub">Upload a single file, optionally preview/edit (images), then Convert or Compress. Supported: images, audio, video, text, docx, pdf.</div>
+    <h1>EverToolbox — File Converter · Compressor · Editor</h1>
+    <p class="lead">Drop a file, preview and optionally edit images, then Convert or Compress. Supports images, audio, video, text & documents. One file at a time.</p>
 
-    <label id="dropZone" class="drop" tabindex="0">
-      <div id="dropText">Click or drop a file here</div>
-      <input id="fileInput" type="file" accept="*/*" />
-      <div class="small" style="margin-top:6px">Only one file at a time. Max size depends on server limits.</div>
-    </label>
+    <div class="grid">
+      <!-- LEFT: controls -->
+      <div class="panel">
+        <div id="dropZone" class="drop" tabindex="0">
+          <div id="dropText">Click or drop one file here</div>
+          <input id="fileInput" type="file" accept="*/*" />
+          <div class="small" style="margin-top:8px">Single file only • Max size enforced by server</div>
+        </div>
 
-    <div class="row" style="margin-top:12px">
-      <div class="col">
-        <label class="small">Target format</label>
-        <select id="targetFormat" aria-label="Target format">
-          <option value="">— keep same for file compression —</option>
-          <optgroup label="Images">
-            <option value="jpeg">JPG / JPEG</option>
-            <option value="png">PNG</option>
-            <option value="webp">WEBP</option>
-            <option value="avif">AVIF</option>
-            <option value="svg">SVG</option>
-          </optgroup>
-          <optgroup label="Documents / Text">
-            <option value="pdf">PDF</option>
-            <option value="txt">TXT</option>
-            <option value="docx">DOCX</option>
-            <option value="html">HTML</option>
-            <option value="md">Markdown</option>
-          </optgroup>
-          <optgroup label="Audio">
-            <option value="mp3">MP3</option>
-            <option value="wav">WAV</option>
-            <option value="ogg">OGG</option>
-          </optgroup>
-          <optgroup label="Video">
-            <option value="mp4">MP4</option>
-            <option value="webm">WEBM</option>
-            <option value="mov">MOV</option>
-          </optgroup>
-        </select>
+        <label class="select">Target format
+          <select id="targetFormat" aria-label="target format">
+            <option value="">— keep original —</option>
+            <optgroup label="Images">
+              <option value="jpeg">JPG / JPEG</option><option value="png">PNG</option><option value="webp">WEBP</option><option value="avif">AVIF</option><option value="svg">SVG</option>
+            </optgroup>
+            <optgroup label="Documents">
+              <option value="pdf">PDF</option><option value="txt">TXT</option><option value="docx">DOCX</option><option value="html">HTML</option><option value="md">Markdown</option>
+            </optgroup>
+            <optgroup label="Audio">
+              <option value="mp3">MP3</option><option value="wav">WAV</option><option value="ogg">OGG</option>
+            </optgroup>
+            <optgroup label="Video">
+              <option value="mp4">MP4</option><option value="webm">WEBM</option>
+            </optgroup>
+          </select>
+        </label>
+
+        <div class="row">
+          <label class="input" style="flex:1">Quality (1–100)
+            <input id="quality" type="number" min="1" max="100" value="80" />
+          </label>
+          <label class="input" style="width:120px">Resize W
+            <input id="width" type="number" placeholder="px" />
+          </label>
+        </div>
+
+        <label class="input">Resize H
+          <input id="height" type="number" placeholder="px" />
+        </label>
+
+        <div style="margin-top:12px;font-size:13px;color:var(--muted)">Image editor (client-side): rotate, crop, brightness/contrast, overlay text. Edits applied before upload.</div>
+
+        <div class="control-row">
+          <button id="openEditor" class="ghost">Open Editor</button>
+          <button id="convertBtn">Convert</button>
+          <button id="compressBtn">Compress</button>
+          <button id="clearBtn" class="ghost">Clear</button>
+        </div>
+
+        <div class="progress" id="progress"><i id="bar"></i></div>
+        <div class="message" id="message"></div>
+        <div class="error" id="error" role="alert"></div>
+        <div class="success" id="success" role="status"></div>
       </div>
 
-      <div style="width:120px">
-        <label class="small">Quality</label>
-        <input id="quality" type="number" min="10" max="100" value="80" />
-      </div>
+      <!-- RIGHT: preview / editor stage -->
+      <div class="stage panel">
+        <div id="stageArea">
+          <canvas id="canvas" style="display:none"></canvas>
+          <div id="mediaPreview"></div>
+          <div class="meta" id="metaInfo"></div>
+        </div>
 
-      <div style="width:140px">
-        <label class="small">Action</label>
-        <select id="actionSelect">
-          <option value="convert">Convert</option>
-          <option value="compress">Compress</option>
-        </select>
-      </div>
+        <!-- Editor controls modal-ish area (client-side) -->
+        <div id="editorControls" style="margin-top:12px;display:none;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <label class="small-muted">Rotate
+              <input id="rotate" type="number" value="0" style="width:100px;padding:8px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.03);color:var(--muted)">
+            </label>
 
-      <div style="display:flex;align-items:flex-end;gap:8px">
-        <button id="goBtn">Run</button>
-        <button id="clearBtn" class="secondary">Clear</button>
+            <label class="small-muted">Crop (left,top,w,h)
+              <input id="crop" type="text" placeholder="e.g. 10,10,200,200" style="min-width:180px;padding:8px;border-radius:8px;background:transparent;border:1px solid rgba(255,255,255,0.03);color:var(--muted)">
+            </label>
+
+            <label class="small-muted">Brightness
+              <input id="brightness" type="number" min="0" max="3" step="0.1" value="1" style="width:100px">
+            </label>
+            <label class="small-muted">Contrast
+              <input id="contrast" type="number" min="0" max="3" step="0.1" value="1" style="width:100px">
+            </label>
+
+            <label class="small-muted">Overlay text
+              <input id="overlayText" type="text" placeholder="Optional text" style="min-width:180px">
+            </label>
+
+            <button id="applyEdits" class="ghost">Apply Edits</button>
+            <button id="resetEdits" class="ghost">Reset Edits</button>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div class="progress" id="progress" aria-hidden="true"><div class="bar" id="bar"></div></div>
-
-    <div id="preview" class="preview" aria-live="polite" style="display:none"></div>
-    <div id="message" class="msg" role="status"></div>
-    <div id="error" class="error" role="alert"></div>
-
-    <footer>© EverToolbox — fast, secure, and accurate file conversions</footer>
+    <footer>EverToolbox — elegant • fast • reliable</footer>
   </div>
 
 <script>
-/* ----- CONFIG ----- */
-//const BACKEND_BASE = '/api/tools/file'; // <--- if frontend is separate, set full URL e.g. "https://evertoolbox-backend.onrender.com/api/tools/file"
-/* ------------------ */
+/* ========== CONFIG ========== */
+const BACKEND_HOST = 'https://evertoolbox-backend.onrender.com';
+const ENDPOINT_CONVERT = BACKEND_HOST + '/api/tools/file/convert';
+const ENDPOINT_COMPRESS = BACKEND_HOST + '/api/tools/file/compress';
+const ENDPOINT_PROCESS = BACKEND_HOST + '/api/tools/file/process'; // fallback if convert/compress not present
 
+/* ========== UI refs ========== */
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const dropText = document.getElementById('dropText');
+const targetFormat = document.getElementById('targetFormat');
+const qualityEl = document.getElementById('quality');
+const widthEl = document.getElementById('width');
+const heightEl = document.getElementById('height');
+const convertBtn = document.getElementById('convertBtn');
+const compressBtn = document.getElementById('compressBtn');
+const clearBtn = document.getElementById('clearBtn');
+const openEditor = document.getElementById('openEditor');
+const messageEl = document.getElementById('message');
+const errorEl = document.getElementById('error');
+const successEl = document.getElementById('success');
+const progress = document.getElementById('progress');
+const bar = document.getElementById('bar');
+const mediaPreview = document.getElementById('mediaPreview');
+const metaInfo = document.getElementById('metaInfo');
+const canvas = document.getElementById('canvas');
+const editorControls = document.getElementById('editorControls');
+const rotateEl = document.getElementById('rotate');
+const cropEl = document.getElementById('crop');
+const brightnessEl = document.getElementById('brightness');
+const contrastEl = document.getElementById('contrast');
+const overlayTextEl = document.getElementById('overlayText');
+const applyEditsBtn = document.getElementById('applyEdits');
+const resetEditsBtn = document.getElementById('resetEdits');
 
-//const BACKEND_BASE = 'https://evertoolbox-backend.onrender.com/api/tools/file';
+/* ========== State ========== */
+let selectedFile = null;
+let processedBlob = null;
+let lastDownloadURL = null;
+let imageObj = new Image();
+let originalImageURL = null;
+let editsState = { rotate:0, crop:null, brightness:1, contrast:1, text:null };
 
-  
-const BACKEND_BASE = '/api/tools/file';
+/* ========== Helpers ========== */
+function showMessage(txt){ messageEl.textContent = txt; errorEl.textContent = ''; successEl.textContent = ''; }
+function showError(txt){ errorEl.textContent = txt; messageEl.textContent = ''; successEl.textContent = ''; }
+function showSuccess(txt){ successEl.textContent = txt; messageEl.textContent = ''; errorEl.textContent = ''; }
+function setProgress(pct){ progress.style.display = (pct===0||pct>=100)?'none':'block'; bar.style.width = pct+'%'; if(pct>=100) setTimeout(()=>progress.style.display='none',300) }
+function clearPreview(){ mediaPreview.innerHTML=''; metaInfo.textContent=''; canvas.style.display='none'; editorControls.style.display='none'; if(originalImageURL){ URL.revokeObjectURL(originalImageURL); originalImageURL=null } }
 
-const el = (id)=>document.getElementById(id);
-const fileInput=el('fileInput'),dropZone=el('dropZone'),dropText=el('dropText'),
-preview=el('preview'),targetFormat=el('targetFormat'),qualityEl=el('quality'),
-actionSelect=el('actionSelect'),goBtn=el('goBtn'),clearBtn=el('clearBtn'),
-progress=el('progress'),bar=el('bar'),message=el('message'),error=el('error');
+/* ---------- Drag & Drop + input ---------- */
+dropZone.addEventListener('click', ()=>fileInput.click());
+dropZone.addEventListener('dragover', e=>{ e.preventDefault(); dropZone.classList.add('drag'); });
+dropZone.addEventListener('dragleave', ()=>dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop', e=>{ e.preventDefault(); dropZone.classList.remove('drag'); if(e.dataTransfer.files && e.dataTransfer.files[0]) handleFileSelect(e.dataTransfer.files[0]); });
 
-let file=null, lastDownloadUrl=null;
+fileInput.addEventListener('change', (e)=>{ if(e.target.files && e.target.files[0]) handleFileSelect(e.target.files[0]); });
 
-function resetUI(){
-  preview.style.display='none'; preview.innerHTML='';
-  progress.style.display='none'; bar.style.width='0';
-  message.textContent=''; error.textContent='';
-  dropText.textContent='Click or drop a file here';
-  lastDownloadUrl && URL.revokeObjectURL(lastDownloadUrl);
-  lastDownloadUrl=null;
-}
-resetUI();
-
-dropZone.addEventListener('click',()=>fileInput.click());
-dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag')});
-dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag'));
-dropZone.addEventListener('drop',e=>{
-  e.preventDefault();dropZone.classList.remove('drag');
-  if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+clearBtn.addEventListener('click', ()=>{
+  selectedFile = null; processedBlob = null; lastDownloadURL && URL.revokeObjectURL(lastDownloadURL); lastDownloadURL=null;
+  fileInput.value=''; clearPreview(); dropText.textContent='Click or drop one file here'; showMessage('Cleared.');
 });
-fileInput.addEventListener('change',e=>{
-  if(e.target.files.length) handleFile(e.target.files[0]);
-});
-clearBtn.onclick=()=>{fileInput.value='';file=null;resetUI();};
 
-function handleFile(f){
-  file=f; dropText.textContent=f.name;
-  preview.style.display='block'; preview.innerHTML='';
-  if(f.type.startsWith('image/')) preview.innerHTML=`<img src="${URL.createObjectURL(f)}" style="max-width:100%;border-radius:8px">`;
-  else if(f.type.startsWith('audio/')) preview.innerHTML=`<audio controls src="${URL.createObjectURL(f)}" style="width:100%"></audio>`;
-  else if(f.type.startsWith('video/')) preview.innerHTML=`<video controls src="${URL.createObjectURL(f)}" style="width:100%;border-radius:8px"></video>`;
-  else preview.innerHTML=`<div class="small">${f.name} — ${(f.size/1024|0)} KB</div>`;
-}
+/* ---------- File selection & preview ---------- */
+function handleFileSelect(f){
+  // accept single file only
+  selectedFile = f;
+  dropText.textContent = f.name;
+  clearPreview();
+  processedBlob = null;
+  showMessage('File selected: '+f.name);
 
-function ext(name){return name.split('.').pop().toLowerCase();}
-function showError(msg){error.textContent=msg;message.textContent='';}
+  const t = f.type || '';
+  metaInfo.textContent = `Size: ${(f.size/1024|0)} KB • Type: ${t||'unknown'}`;
 
-goBtn.onclick=async ()=>{
-  if(!file) return showError('Upload a file first.');
-  const act=actionSelect.value,tf=targetFormat.value,qual=qualityEl.value||80;
-  const inExt=ext(file.name);
-  if(act==='convert'&&!tf)return showError('Select target format.');
-  if(tf&&inExt===tf&&act==='convert'&&!confirm('File already in that format. Continue?'))return;
-
-  const fd=new FormData();
-  fd.append('file',file);
-  fd.append('action',act);
-  if(tf)fd.append('targetFormat',tf);
-  fd.append('quality',qual);
-
-  const xhr=new XMLHttpRequest();
-  xhr.open('POST',`${BACKEND_BASE}/process`);
-  xhr.responseType='blob';
-  xhr.upload.onprogress=e=>{if(e.lengthComputable){progress.style.display='block';bar.style.width=Math.round((e.loaded/e.total)*50)+'%';}};
-  xhr.onprogress=e=>{if(e.lengthComputable){bar.style.width=(50+Math.round((e.loaded/e.total)*50))+'%';}};
-  xhr.onload=async()=>{
-    progress.style.display='none';
-    if(xhr.status>=200&&xhr.status<300){
-      const disp=xhr.getResponseHeader('Content-Disposition')||'';
-      let filename=file.name;
-      const m=disp.match(/filename="?([^"]+)"?/);
-      if(m) filename=m[1];
-      else if(tf) filename=file.name.replace(/\.[^.]+$/,'')+'.'+tf;
-
-      const blob=xhr.response;
-      lastDownloadUrl=URL.createObjectURL(blob);
-      const a=document.createElement('a');a.href=lastDownloadUrl;a.download=filename;a.click();
-      message.innerHTML=`✅ Done — downloaded <b>${filename}</b>. <button id="dlAgain">Download again</button>`;
-      el('dlAgain').onclick=()=>{const a2=document.createElement('a');a2.href=lastDownloadUrl;a2.download=filename;a2.click();};
-    }else{
-      try{const j=JSON.parse(await xhr.response.text());showError(j.error||'Server error');}
-      catch{showError('Processing failed: '+xhr.status);}
+  if (t.startsWith('image/')) {
+    const url = URL.createObjectURL(f);
+    originalImageURL = url;
+    imageObj = new Image();
+    imageObj.onload = ()=> { renderImageToCanvas(imageObj); canvas.style.display = 'block'; editorControls.style.display = 'block'; mediaPreview.innerHTML = `<img class="preview-media" src="${url}" alt="image preview">`; }
+    imageObj.onerror = ()=> { mediaPreview.innerHTML = `<div class="small">Could not preview image</div>`; }
+    imageObj.src = url;
+  } else if (t === 'application/pdf') {
+    const url = URL.createObjectURL(f);
+    mediaPreview.innerHTML = `<embed src="${url}" type="application/pdf" width="100%" height="380px">`;
+  } else if (t.startsWith('audio/')) {
+    const url = URL.createObjectURL(f);
+    mediaPreview.innerHTML = `<audio controls class="preview-media" src="${url}"></audio>`;
+  } else if (t.startsWith('video/')) {
+    const url = URL.createObjectURL(f);
+    mediaPreview.innerHTML = `<video controls class="preview-media" src="${url}"></video>`;
+  } else {
+    // attempt to show text preview for small files
+    if (f.size < 200000) {
+      const reader = new FileReader();
+      reader.onload = () => mediaPreview.innerHTML = `<pre style="white-space:pre-wrap;color:var(--muted);font-size:13px">${escapeHtml(reader.result)}</pre>`;
+      reader.onerror = ()=> mediaPreview.innerHTML = `<div class="small">Cannot preview</div>`;
+      reader.readAsText(f);
+    } else {
+      mediaPreview.innerHTML = `<div class="small">Selected: ${f.name}</div>`;
     }
-  };
-  xhr.onerror=()=>{progress.style.display='none';showError('Network/CORS error.');};
-  bar.style.width='5%';progress.style.display='block';message.textContent=(act==='convert'?'Converting...':'Compressing...');
-  xhr.send(fd);
-};
+  }
+}
+
+/* ---------- Image canvas utilities (client-side editing) ---------- */
+function renderImageToCanvas(img){
+  const maxW = 1200;
+  const maxH = 800;
+  let iw = img.naturalWidth || img.width;
+  let ih = img.naturalHeight || img.height;
+  const scale = Math.min(1, maxW/iw, maxH/ih);
+  const cw = Math.round((widthEl.value?parseInt(widthEl.value):Math.round(iw*scale))||Math.round(iw*scale));
+  const ch = Math.round((heightEl.value?parseInt(heightEl.value):Math.round(ih*scale))||Math.round(ih*scale));
+  canvas.width = cw; canvas.height = ch;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,cw,ch);
+  // apply rotation + transforms in draw function
+  // call draw with current edits
+  drawCanvasWithEdits();
+}
+
+function drawCanvasWithEdits(){
+  if(!imageObj.src) return;
+  const ctx = canvas.getContext('2d');
+  const cw = canvas.width, ch = canvas.height;
+  ctx.save();
+  ctx.clearRect(0,0,cw,ch);
+  // translate center for rotation
+  const rot = (editsState.rotate||0) * Math.PI/180;
+  ctx.translate(cw/2, ch/2);
+  ctx.rotate(rot);
+  ctx.translate(-cw/2, -ch/2);
+  // draw image scaled to canvas size (fit)
+  ctx.drawImage(imageObj, 0, 0, cw, ch);
+  // apply brightness/contrast via canvas globalComposite? use filter if supported
+  ctx.restore();
+  // apply CSS filter fallback using an offscreen canvas (simple approach)
+  // Instead we will fake brightness/contrast by drawing overlay (quick), but for production use advanced filter libraries
+  if (editsState.brightness != 1 || editsState.contrast != 1) {
+    // simple brightness adjustment
+    const imageData = ctx.getImageData(0,0,cw,ch);
+    const data = imageData.data;
+    const b = editsState.brightness || 1;
+    const c = editsState.contrast || 1;
+    // contrast adjust center
+    const factor = (259 * (c * 255 + 255)) / (255 * (259 - c * 255));
+    for (let i=0;i<data.length;i+=4){
+      for (let j=0;j<3;j++){
+        let v = data[i+j];
+        v = v * b;
+        v = factor * (v - 128) + 128;
+        data[i+j] = Math.max(0, Math.min(255, v));
+      }
+    }
+    ctx.putImageData(imageData, 0,0);
+  }
+  // crop overlay (visual)
+  if (editsState.crop) {
+    const c = editsState.crop;
+    ctx.strokeStyle = 'yellow'; ctx.lineWidth=2;
+    ctx.strokeRect(c.left, c.top, c.width, c.height);
+  }
+  // overlay text
+  if (editsState.text) {
+    ctx.fillStyle = editsState.text.color || '#fff';
+    ctx.font = `${editsState.text.size||36}px sans-serif`;
+    ctx.fillText(editsState.text.value, editsState.text.x||20, editsState.text.y||50);
+  }
+}
+
+/* apply edits from inputs to state */
+applyEditsBtn.addEventListener('click', ()=>{
+  editsState.rotate = parseFloat(rotateEl.value||0);
+  const cropVal = (cropEl.value||'').trim();
+  editsState.crop = null;
+  if (cropVal){
+    const parts = cropVal.split(',').map(s=>parseInt(s.trim())).filter(n=>!isNaN(n));
+    if (parts.length===4) editsState.crop = { left:parts[0], top:parts[1], width:parts[2], height:parts[3] };
+  }
+  editsState.brightness = parseFloat(brightnessEl.value||1);
+  editsState.contrast = parseFloat(contrastEl.value||1);
+  const txt = (overlayTextEl.value||'').trim();
+  editsState.text = txt ? { value: txt, x:20, y:40, size:parseInt(document.getElementById('overlayText').dataset.size||36), color:'#fff' } : null;
+  drawCanvasWithEdits();
+  showMessage('Edits applied in preview.');
+});
+
+/* reset edits */
+resetEditsBtn.addEventListener('click', ()=>{
+  editsState = { rotate:0, crop:null, brightness:1, contrast:1, text:null };
+  rotateEl.value='0'; cropEl.value=''; brightnessEl.value='1'; contrastEl.value='1'; overlayTextEl.value='';
+  drawCanvasWithEdits();
+  showMessage('Edits reset.');
+});
+
+/* Open editor toggles editor controls */
+openEditor.addEventListener('click', ()=>{
+  if (!selectedFile) return showError('Select an image first to edit.');
+  if (!selectedFile.type.startsWith('image/')) return showError('Editor only supports images.');
+  editorControls.style.display = editorControls.style.display === 'none' ? 'block' : 'none';
+});
+
+/* ---------- Upload / Convert / Compress flow ---------- */
+convertBtn.addEventListener('click', ()=> runAction('convert'));
+compressBtn.addEventListener('click', ()=> runAction('compress'));
+
+async function runAction(action){
+  if (!selectedFile) return showError('Please select a file first.');
+  clearMessages();
+  // Build payload: if image and edits applied, send canvas blob; otherwise, send file
+  let blobToSend = selectedFile;
+  let filenameToSend = selectedFile.name;
+  if (selectedFile.type.startsWith('image/') && canvas.style.display !== 'none') {
+    // take crop if present
+    let uploadBlob = await getEditedImageBlob();
+    if (uploadBlob) { blobToSend = uploadBlob; filenameToSend = (selectedFile.name.replace(/\.[^/.]+$/,'') || 'image') + '.' + (targetFormat.value || selectedFile.name.split('.').pop()); }
+  }
+
+  // assemble FormData fields to match backend expectations
+  const fd = new FormData();
+  fd.append('file', blobToSend, filenameToSend);
+  fd.append('action', action);
+  if (targetFormat.value) fd.append('targetFormat', targetFormat.value);
+  fd.append('quality', String(Math.max(1, Math.min(100, parseInt(qualityEl.value||80)))));
+
+  // choose endpoint: prefer explicit convert/compress endpoints if available; fall back to /process
+  const endpoint = (action==='convert') ? ENDPOINT_CONVERT : (action==='compress') ? ENDPOINT_COMPRESS : ENDPOINT_PROCESS;
+
+  try {
+    setProgressVisible(true); setProgress(5);
+    showMessage(action === 'convert' ? 'Converting...' : 'Compressing...');
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', endpoint, true);
+    xhr.responseType = 'blob';
+    xhr.timeout = 5 * 60 * 1000; // 5 min
+
+    xhr.upload.onprogress = (e)=> { if (e.lengthComputable) { const p = Math.round((e.loaded/e.total)*60); setProgress(p); } };
+    xhr.onprogress = (e) => { if(e.lengthComputable) { const p = 60 + Math.round((e.loaded/e.total)*40); setProgress(p); } };
+
+    xhr.onload = async () => {
+      setProgress(100);
+      try { setTimeout(()=>setProgressVisible(false),200); } catch(e){}
+      if (xhr.status >= 200 && xhr.status < 300){
+        // success — save blob and trigger download
+        const contentDisposition = xhr.getResponseHeader('Content-Disposition') || '';
+        let outName = guessOutputFilename(filenameToSend, targetFormat.value, contentDisposition);
+        const outBlob = xhr.response;
+        lastDownloadURL && URL.revokeObjectURL(lastDownloadURL);
+        lastDownloadURL = URL.createObjectURL(outBlob);
+        downloadBlob(lastDownloadURL, outName);
+        processedBlob = outBlob;
+        showSuccess('Done — download started.');
+      } else {
+        // try parse JSON from blob
+        const txt = await blobToText(xhr.response);
+        try {
+          const j = JSON.parse(txt);
+          showError(j.error || ('Server error ' + xhr.status));
+        } catch(e){
+          showError('Server returned error: ' + xhr.status);
+        }
+      }
+    };
+
+    xhr.onerror = ()=> { setProgressVisible(false); showError('Network or CORS error.'); };
+    xhr.ontimeout = ()=> { setProgressVisible(false); showError('Request timed out. Try smaller file.'); };
+    xhr.send(fd);
+  } catch(err){
+    showError('Upload failed: ' + (err && err.message ? err.message : String(err)));
+    setProgressVisible(false);
+  }
+}
+
+/* ---------- Utilities ---------- */
+function clearMessages(){ messageEl.textContent=''; errorEl.textContent=''; successEl.textContent=''; }
+function showMessage(msg){ messageEl.textContent = msg; errorEl.textContent=''; successEl.textContent=''; }
+function showError(msg){ errorEl.textContent = msg; messageEl.textContent=''; successEl.textContent=''; }
+function showSuccess(msg){ successEl.textContent = msg; messageEl.textContent=''; errorEl.textContent=''; }
+
+function setProgress(pct){ bar.style.width = pct + '%'; progress.style.display = (pct>=100||pct<=0)?'none':'block'; }
+function setProgressVisible(v){ progress.style.display = v ? 'block' : 'none'; if(!v) bar.style.width='0%'; }
+
+function downloadBlob(url, filename){
+  const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  // Keep URL alive for "Download again" until clear or new process
+}
+
+/* build a usable filename using Content-Disposition or fallback */
+function guessOutputFilename(origName, targetFormatFromUI, contentDisposition){
+  let filename = '';
+  const m = contentDisposition.match(/filename="?([^"]+)"?/);
+  if (m && m[1]) filename = m[1];
+  if (!filename) {
+    const base = origName.replace(/\.[^/.]+$/,'');
+    const ext = targetFormatFromUI || origName.split('.').pop() || 'bin';
+    filename = base + '.' + ext;
+  }
+  // remove .bin if present unnecessarily
+  filename = filename.replace(/\.bin$/i, '');
+  return filename;
+}
+
+/* convert blob->text */
+async function blobToText(b){ try { return await new Response(b).text(); } catch(e){ return ''; } }
+
+/* get edited image blob from canvas, applying crop if necessary */
+async function getEditedImageBlob(){
+  if (canvas.style.display === 'none') return null;
+  // apply crop extraction if requested
+  let mimeType = selectedFile ? selectedFile.type : 'image/png';
+  // if user selected targetFormat that is image, prefer that mime
+  const t = targetFormat.value;
+  if (t && ['jpeg','jpg','png','webp','avif','svg'].includes(t)) {
+    mimeType = (t === 'jpeg' ? 'image/jpeg' : (t === 'jpg' ? 'image/jpeg' : 'image/'+t));
+  }
+  const edits = editsState; // current edits
+  // if crop present, use offscreen canvas to extract area
+  if (edits.crop) {
+    const c = edits.crop;
+    const off = document.createElement('canvas');
+    off.width = c.width; off.height = c.height;
+    const octx = off.getContext('2d');
+    // copy from main canvas area
+    octx.drawImage(canvas, c.left, c.top, c.width, c.height, 0,0, c.width, c.height);
+    return await new Promise(res=> off.toBlob(b=>res(b), mimeType, Math.max(0.03, (parseInt(qualityEl.value)||80)/100)));
+  } else {
+    return await new Promise(res=> canvas.toBlob(b=>res(b), mimeType, Math.max(0.03, (parseInt(qualityEl.value)||80)/100)));
+  }
+}
+
+/* safe html escape for text previews */
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+/* extract text preview from small blob */
+async function textPreviewFromFile(file){
+  try {
+    const txt = await file.text();
+    return txt.slice(0, 8000);
+  } catch (e) {
+    return '';
+  }
+}
+
+/* guess binary or not */
+function isPreviewableText(type, size){
+  if (!type) return size < 200000;
+  return type.startsWith('text/') || ['application/json','application/xml','application/javascript'].includes(type);
+}
+
+/* ---------- helper: convert image/canvas draw (initial draw done when selecting file) ---------- */
+/* When original image loads we call renderImageToCanvas -> drawCanvasWithEdits handled earlier */
+
+/* ---------- utility: read small data for docx attempt preview (not full docx parser) ---------- */
+async function tryDocxPreview(file){
+  // docx is zipped. Skip complex preview; just show file name
+  return `<div class="small">Document: ${file.name}</div>`;
+}
+
+/* ---------- helper: get server health on load (non-blocking) */
+(async function checkHealth(){
+  try {
+    const res = await fetch(BACKEND_HOST + '/api/tools/file/health');
+    const j = await res.json();
+    console.log('backend health', j);
+  } catch(e){
+    console.warn('health check failed', e);
+  }
+})();
+
 </script>
-  
 </body>
-  </html>
-      
+</html>
+                
+
+
