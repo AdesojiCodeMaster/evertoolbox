@@ -240,72 +240,259 @@ async function speakTextWithSelectedLang() {
    - Supports: text edit (txt->pdf via server), image edit (client-side) + server upload if user chooses server conversion
    ========================================================================== */
 
-function initFileConverterTool() {
-  const uploadInput = document.getElementById("fileInput");
-  const formatSelect = document.getElementById("formatSelect");
-  const qualityInput = document.getElementById("qualityInput");
-  const convertBtn = document.getElementById("convertBtn");
-  const compressBtn = document.getElementById("compressBtn");
-  const resultDiv = document.getElementById("result");
 
-  let selectedFile = null;
+// script.js - FINAL (client-side editing + uploader for File Converter + Compressor)
+// Works with backend endpoint: POST /api/tools/file/process
+// Expects server mounted at same origin (or adjust URLs below)
 
-  uploadInput.addEventListener("change", (e) => {
-    selectedFile = e.target.files[0];
-    if (selectedFile) {
-      resultDiv.textContent = `Selected: ${selectedFile.name} (${(selectedFile.size / 1024 / 1024).toFixed(2)} MB)`;
-    }
-  });
+const fileInput = document.getElementById('fileInput');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const formatSelect = document.getElementById('formatSelect');
+const qualityInput = document.getElementById('quality');
+const widthInput = document.getElementById('width');
+const heightInput = document.getElementById('height');
+const rotateInput = document.getElementById('rotate');
+const cropInput = document.getElementById('crop');
+const overlayTextInput = document.getElementById('overlayText');
+const textColorInput = document.getElementById('textColor');
+const textSizeInput = document.getElementById('textSize');
+const applyEditsBtn = document.getElementById('applyEdits');
+const convertBtn = document.getElementById('convertBtn');
+const compressBtn = document.getElementById('compressBtn');
+const statusEl = document.getElementById('status');
+const previewInfo = document.getElementById('previewInfo');
 
-  async function processFile(action) {
-    if (!selectedFile) return alert("Please upload a file first.");
+let currentFile = null;
+let img = new Image();
+let lastDrawParams = null;
 
-    const targetFormat = formatSelect.value;
-    const ext = selectedFile.name.split(".").pop().toLowerCase();
-    if (action === "convert" && ext === targetFormat.toLowerCase())
-      return alert("File is already in the selected format.");
+// DRAW & PREVIEW
+function drawImageOnCanvas(image, opts = {}) {
+  // safety limits to avoid huge canvases
+  const maxW = 1600, maxH = 1200;
+  let iw = image.naturalWidth || image.width;
+  let ih = image.naturalHeight || image.height;
+  let scale = Math.min(1, maxW / Math.max(1, iw), maxH / Math.max(1, ih));
+  const targetW = parseInt(widthInput.value) || Math.round(iw * scale);
+  const targetH = parseInt(heightInput.value) || Math.round(ih * scale);
 
-    const formData = new FormData();
-    formData.append("file", selectedFile);
-    formData.append("targetFormat", targetFormat);
-    formData.append("quality", qualityInput.value || 70);
-    formData.append("action", action); // backend can check this if needed
+  canvas.width = targetW;
+  canvas.height = targetH;
 
-    resultDiv.textContent = `${action === "convert" ? "Converting" : "Compressing"} file... ⏳`;
+  ctx.save();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    try {
-      const res = await fetch("https://evertoolbox-backend.onrender.com/api/tools/file/process", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) throw new Error(`${action} failed.`);
-
-      const disposition = res.headers.get("Content-Disposition");
-      const filenameMatch = disposition && disposition.match(/filename="(.+)"/);
-      const filename = filenameMatch ? filenameMatch[1] : `result.${targetFormat}`;
-
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      link.textContent = "⬇️ Download Result";
-      link.className = "download-btn";
-
-      resultDiv.innerHTML = "";
-      resultDiv.appendChild(link);
-    } catch (err) {
-      console.error(err);
-      resultDiv.textContent = `❌ Error during ${action}.`;
-    }
+  // rotation around center
+  const rot = ((opts.rotate || 0) % 360) * Math.PI / 180;
+  if (rot !== 0) {
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate(rot);
+    ctx.translate(-canvas.width / 2, -canvas.height / 2);
   }
 
-  convertBtn.addEventListener("click", () => processFile("convert"));
-  compressBtn.addEventListener("click", () => processFile("compress"));
-       }
-     
+  // draw scaled
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+  // crop preview rectangle
+  if (opts.crop) {
+    ctx.strokeStyle = 'yellow';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(opts.crop.left, opts.crop.top, opts.crop.width, opts.crop.height);
+  }
+
+  // overlay text
+  if (opts.text && opts.text.value) {
+    ctx.fillStyle = opts.text.color || '#ffffff';
+    ctx.font = `${opts.text.size||36}px sans-serif`;
+    ctx.fillText(opts.text.value, opts.text.x || 20, opts.text.y || (opts.text.size || 36));
+  }
+
+  ctx.restore();
+
+  lastDrawParams = opts;
+  previewInfo.textContent = `Preview ${canvas.width}×${canvas.height}`;
+}
+
+// FILE SELECTION
+fileInput.addEventListener('change', () => {
+  const f = fileInput.files[0];
+  if (!f) return;
+  currentFile = f;
+  statusEl.textContent = '';
+  previewInfo.textContent = '';
+  // If image type, preview on canvas; otherwise clear canvas and display name
+  if (f.type.startsWith('image/')) {
+    const url = URL.createObjectURL(f);
+    img.onload = () => {
+      drawImageOnCanvas(img, { rotate: 0 });
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      statusEl.textContent = 'Unable to preview image.';
+    };
+    img.src = url;
+  } else {
+    // Clear canvas and show info
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    previewInfo.textContent = `Selected file: ${f.name} (${Math.round(f.size/1024)} KB)`;
+  }
+});
+
+// Build edits JSON from UI
+function buildEditsFromUI() {
+  const rotate = parseFloat(rotateInput.value || 0);
+  let crop = null;
+  if (cropInput.value.trim()) {
+    const parts = cropInput.value.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+    if (parts.length === 4) crop = { left: parts[0], top: parts[1], width: parts[2], height: parts[3] };
+  }
+  const textVal = overlayTextInput.value.trim();
+  const text = textVal ? { value: textVal, x: 20, y: parseInt(textSizeInput.value||36), size: parseInt(textSizeInput.value||36), color: textColorInput.value } : null;
+  return { rotate, crop, text };
+}
+
+// Apply edits preview (client-side)
+applyEditsBtn.addEventListener('click', () => {
+  if (!currentFile) return alert('Load an image first');
+  if (!currentFile.type.startsWith('image/')) return alert('Edits preview only available for images');
+  const edits = buildEditsFromUI();
+  drawImageOnCanvas(img, edits);
+  statusEl.textContent = 'Edits applied to preview.';
+});
+
+// Convert / Compress helpers
+async function canvasToBlobWithCrop(edits, mimeType='image/png', quality = 0.9) {
+  return new Promise(resolve => {
+    if (!edits || !edits.crop) {
+      canvas.toBlob(blob => resolve(blob), mimeType, quality);
+    } else {
+      const c = document.createElement('canvas');
+      c.width = edits.crop.width;
+      c.height = edits.crop.height;
+      const cctx = c.getContext('2d');
+      cctx.drawImage(canvas, edits.crop.left, edits.crop.top, edits.crop.width, edits.crop.height, 0, 0, edits.crop.width, edits.crop.height);
+      c.toBlob(blob => resolve(blob), mimeType, quality);
+    }
+  });
+}
+
+async function downloadResponseAsFile(response, fallbackName) {
+  const blob = await response.blob();
+  const disposition = response.headers.get('Content-Disposition') || '';
+  let filename = fallbackName || 'download';
+  const m = disposition.match(/filename="?([^"]+)"?/);
+  if (m && m[1]) filename = m[1];
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+// Upload routine (Central)
+async function uploadFinalBlob(blob, filename, options = { action: 'convert', targetFormat: 'webp', quality: 80, edits: null, width: null, height: null }) {
+  const fd = new FormData();
+  fd.append('file', blob, filename);
+  if (options.targetFormat) fd.append('targetFormat', options.targetFormat);
+  fd.append('quality', String(options.quality || 80));
+  if (options.action) fd.append('action', options.action);
+  if (options.edits) fd.append('edits', JSON.stringify(options.edits));
+  if (options.width) fd.append('width', String(options.width));
+  if (options.height) fd.append('height', String(options.height));
+
+  const resp = await fetch('/api/tools/file/process', { method: 'POST', body: fd });
+  return resp;
+}
+
+// MAIN: Convert (button)
+convertBtn.addEventListener('click', async () => {
+  statusEl.textContent = '';
+  try {
+    if (!currentFile) return alert('Select a file first');
+    const edits = buildEditsFromUI();
+    let blobToSend, sendName;
+    const targetFormat = formatSelect.value;
+    const qualityVal = parseInt(qualityInput.value || '80');
+
+    if (currentFile.type.startsWith('image/')) {
+      // Use canvas blob (applies client edits and resize)
+      // Choose mimeType according to target if it's an image; otherwise send as PNG then server will convert
+      const imgTargetIsImage = ['webp','jpeg','jpg','png','avif'].includes(targetFormat.toLowerCase());
+      const mimeType = imgTargetIsImage ? `image/${ targetFormat === 'jpg' ? 'jpeg' : targetFormat }` : 'image/png';
+      blobToSend = await canvasToBlobWithCrop(edits, mimeType, Math.max(0.1, qualityVal/100));
+      const ext = (imgTargetIsImage ? (targetFormat === 'jpg' ? 'jpg' : targetFormat) : (currentFile.name.split('.').pop() || 'png'));
+      sendName = currentFile.name.replace(/\.[^/.]+$/, '') + '.' + ext;
+    } else {
+      // non-image: send original file (edits not applicable)
+      blobToSend = currentFile;
+      sendName = currentFile.name;
+    }
+
+    // same-format check on client side: prevent convert if file already in target format (except user chose different)
+    const inputExt = (currentFile.name.split('.').pop() || '').toLowerCase();
+    if (inputExt === targetFormat.toLowerCase()) {
+      const proceed = confirm('File appears to already be in the chosen format. Continue?');
+      if (!proceed) return;
+    }
+
+    statusEl.textContent = 'Converting... please wait';
+    const resp = await uploadFinalBlob(blobToSend, sendName, { action: 'convert', targetFormat, quality: qualityVal, edits, width: widthInput.value || null, height: heightInput.value || null });
+
+    if (!resp.ok) {
+      const j = await resp.json().catch(()=>null);
+      throw new Error((j && j.error) ? j.error : `Server returned ${resp.status}`);
+    }
+
+    await downloadResponseAsFile(resp, `${sendName}`);
+    statusEl.textContent = 'Conversion completed';
+  } catch (err) {
+    console.error('Convert error', err);
+    statusEl.textContent = 'Error: ' + (err.message || err);
+  }
+});
+
+// MAIN: Compress (button)
+compressBtn.addEventListener('click', async () => {
+  statusEl.textContent = '';
+  try {
+    if (!currentFile) return alert('Select a file first');
+    const edits = buildEditsFromUI();
+    let blobToSend, sendName;
+    const qualityVal = parseInt(qualityInput.value || '80');
+
+    if (currentFile.type.startsWith('image/')) {
+      // For compress: keep same type but reduce quality (canvas)
+      const mimeType = currentFile.type || 'image/jpeg';
+      blobToSend = await canvasToBlobWithCrop(edits, mimeType, Math.max(0.05, qualityVal/100));
+      sendName = currentFile.name;
+    } else {
+      // non-image: compress request (server-side compression). Send original.
+      blobToSend = currentFile;
+      sendName = currentFile.name;
+    }
+
+    statusEl.textContent = 'Compressing... please wait';
+    const resp = await uploadFinalBlob(blobToSend, sendName, { action: 'compress', targetFormat: formatSelect.value, quality: qualityVal, edits });
+
+    if (!resp.ok) {
+      const j = await resp.json().catch(()=>null);
+      throw new Error((j && j.error) ? j.error : `Server returned ${resp.status}`);
+    }
+
+    await downloadResponseAsFile(resp, `${sendName}`);
+    statusEl.textContent = 'Compression completed';
+  } catch (err) {
+    console.error('Compress error', err);
+    statusEl.textContent = 'Error: ' + (err.message || err);
+  }
+});
+
+
 
 /* =========================================================================
    IMAGE CONVERTER / THUMBNAIL (page-level - similar editor but with explicit thumb option)
