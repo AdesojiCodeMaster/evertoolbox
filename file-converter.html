@@ -321,42 +321,27 @@ input[type="text"]:focus {
 
   
   
+  <section id="fileConverterTool" class="tool-section">
+  <h2>File Converter + Compressor</h2>
+  <input type="file" id="fileInput" accept="*" />
   
-  <!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>EverToolbox — Convert & Compress</title>
-  <style>
-    body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:18px}
-    .drop{border:2px dashed #ccc;padding:20px;border-radius:8px;text-align:center}
-    .controls{margin-top:12px;display:flex;gap:12px;align-items:center}
-    input[type=range]{width:180px}
-    .preview{margin-top:12px}
-    button{padding:8px 12px;border-radius:6px;border:1px solid #888;background:#0b7;cursor:pointer}
-  </style>
-</head>
-<body>
-  <h2>Convert & Compress (Single file)</h2>
-  <div class="drop" id="drop">Tap to select or drop a file here</div>
-  <div class="controls">
-    <label>Target format:
-      <select id="target">
-        <option value="webp">webp (image)</option>
-        <option value="jpeg">jpeg (image)</option>
-        <option value="png">png (image)</option>
-        <option value="pdf">pdf</option>
-        <option value="mp3">mp3 (audio)</option>
-        <option value="mp4">mp4 (video)</option>
-      </select>
-    </label>
-    <label>Quality: <input type="range" id="quality" min="10" max="100" value="80"/></label>
-    <button id="uploadBtn">Upload & Process</button>
-  </div>
+  <label>Target Format:</label>
+  <select id="formatSelect">
+    <option value="jpg">JPG</option>
+    <option value="png">PNG</option>
+    <option value="webp">WEBP</option>
+    <option value="pdf">PDF</option>
+    <option value="txt">TXT</option>
+    <option value="docx">DOCX</option>
+    <option value="mp3">MP3</option>
+    <option value="wav">WAV</option>
+  </select>
 
-  <div class="preview" id="preview"></div>
+  <label>Quality (1–100):</label>
+  <input type="number" id="qualityInput" min="1" max="100" value="70" />
 
-  <script src="script.js"></script>
-</body>
-</html>
+  <button id="convertBtn">Convert / Compress</button>
+
+  <div id="result"></div>
+      </section>
+  
