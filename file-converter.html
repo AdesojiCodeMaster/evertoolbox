@@ -644,7 +644,7 @@ input[type="text"]:focus {
   
   
 
-
+<!--
 
     <!doctype html>
 <html lang="en">
@@ -938,7 +938,352 @@ checkHealth();
 </script>
 </body>
   </html>
-      
+ -->     
+
+
+
+
+
+
+  <!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>EverToolbox — File Converter & Compressor</title>
+  <style>
+    :root{
+      --bg:#f6f8fb; --card:#fff; --accent:#0b75ff; --accent-2:#1fb97a; --muted:#6b7280;
+    }
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:#111}
+    .wrap{max-width:880px;margin:36px auto;padding:22px;background:var(--card);border-radius:12px;box-shadow:0 8px 30px rgba(20,30,60,0.06)}
+    h1{margin:0 0 12px;font-weight:600;color:var(--accent)}
+    .sub{color:var(--muted);margin-bottom:18px}
+    .row{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+    .col{flex:1;min-width:220px}
+    .drop{border:2px dashed rgba(11,117,255,0.18);padding:18px;border-radius:10px;text-align:center;background:#fbfdff;cursor:pointer}
+    .drop.drag{background:#eef7ff}
+    .small{font-size:0.92rem;color:var(--muted)}
+    input[type=file]{display:none}
+    select,input[type=number]{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ee}
+    .controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+    button{background:var(--accent);color:#fff;border:0;padding:10px 16px;border-radius:10px;font-weight:600;cursor:pointer}
+    button.secondary{background:#475569}
+    .preview{margin-top:18px;border-radius:8px;padding:12px;background:#fbfbfc;border:1px solid #f0f3f7}
+    .progress{height:8px;background:#e6eefb;border-radius:6px;overflow:hidden;margin-top:12px;display:none}
+    .bar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-2))}
+    .msg{margin-top:12px;color:#0b75ff}
+    .error{margin-top:12px;color:#d33}
+    footer{margin-top:20px;font-size:0.85rem;color:var(--muted);text-align:center}
+    @media (max-width:640px){ .row{flex-direction:column} }
+  </style>
+</head>
+<body>
+  <div class="wrap" role="main">
+    <h1>File Converter + Compressor</h1>
+    <div class="sub">Upload a single file, optionally preview/edit (images), then Convert or Compress. Supported: images, audio, video, text, docx, pdf.</div>
+
+    <label id="dropZone" class="drop" tabindex="0">
+      <div id="dropText">Click or drop a file here</div>
+      <input id="fileInput" type="file" accept="*/*" />
+      <div class="small" style="margin-top:6px">Only one file at a time. Max size depends on server limits.</div>
+    </label>
+
+    <div class="row" style="margin-top:12px">
+      <div class="col">
+        <label class="small">Target format</label>
+        <select id="targetFormat" aria-label="Target format">
+          <option value="">— keep same for file compression —</option>
+          <optgroup label="Images">
+            <option value="jpeg">JPG / JPEG</option>
+            <option value="png">PNG</option>
+            <option value="webp">WEBP</option>
+            <option value="avif">AVIF</option>
+            <option value="svg">SVG</option>
+          </optgroup>
+          <optgroup label="Documents / Text">
+            <option value="pdf">PDF</option>
+            <option value="txt">TXT</option>
+            <option value="docx">DOCX</option>
+            <option value="html">HTML</option>
+            <option value="md">Markdown</option>
+          </optgroup>
+          <optgroup label="Audio">
+            <option value="mp3">MP3</option>
+            <option value="wav">WAV</option>
+            <option value="ogg">OGG</option>
+          </optgroup>
+          <optgroup label="Video">
+            <option value="mp4">MP4</option>
+            <option value="webm">WEBM</option>
+            <option value="mov">MOV</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div style="width:120px">
+        <label class="small">Quality</label>
+        <input id="quality" type="number" min="10" max="100" value="80" />
+      </div>
+
+      <div style="width:140px">
+        <label class="small">Action</label>
+        <select id="actionSelect">
+          <option value="convert">Convert</option>
+          <option value="compress">Compress</option>
+        </select>
+      </div>
+
+      <div style="display:flex;align-items:flex-end;gap:8px">
+        <button id="goBtn">Run</button>
+        <button id="clearBtn" class="secondary">Clear</button>
+      </div>
+    </div>
+
+    <div class="progress" id="progress" aria-hidden="true"><div class="bar" id="bar"></div></div>
+
+    <div id="preview" class="preview" aria-live="polite" style="display:none"></div>
+    <div id="message" class="msg" role="status"></div>
+    <div id="error" class="error" role="alert"></div>
+
+    <footer>© EverToolbox — fast, secure, and accurate file conversions</footer>
+  </div>
+
+<script>
+/* ----- CONFIG ----- */
+const BACKEND_BASE = 'https://evertoolbox-backend.onrender.com/api/tools/file';
+/* ------------------ */
+
+const dropZone = document.getElementById('dropZone');
+let fileInput = document.getElementById('fileInput');
+const dropText = document.getElementById('dropText');
+const preview = document.getElementById('preview');
+const targetFormat = document.getElementById('targetFormat');
+const qualityEl = document.getElementById('quality');
+const actionSelect = document.getElementById('actionSelect');
+const goBtn = document.getElementById('goBtn');
+const clearBtn = document.getElementById('clearBtn');
+const progress = document.getElementById('progress');
+const bar = document.getElementById('bar');
+const message = document.getElementById('message');
+const error = document.getElementById('error');
+
+let file = null;
+
+function resetUI(){
+  preview.style.display='none';
+  preview.innerHTML='';
+  message.textContent='';
+  error.textContent='';
+  progress.style.display='none';
+  bar.style.width='0%';
+  dropText.textContent = 'Click or drop a file here';
+  file = null;
+  // reset input (do this on clear or after operation)
+  const newInput = fileInput.cloneNode(true);
+  fileInput.parentNode.replaceChild(newInput, fileInput);
+  fileInput = newInput;
+  fileInput.addEventListener('change', onFileInputChange);
+}
+
+resetUI();
+
+/* Drag & drop */
+dropZone.addEventListener('click', ()=> fileInput.click());
+dropZone.addEventListener('dragover', e=> { e.preventDefault(); dropZone.classList.add('drag'); });
+dropZone.addEventListener('dragleave', ()=> { dropZone.classList.remove('drag'); });
+dropZone.addEventListener('drop', e=> {
+  e.preventDefault(); dropZone.classList.remove('drag');
+  if (e.dataTransfer.files && e.dataTransfer.files.length) handleFileSelect(e.dataTransfer.files[0]);
+});
+
+function onFileInputChange(e){
+  if (e.target.files && e.target.files.length) handleFileSelect(e.target.files[0]);
+}
+fileInput.addEventListener('change', onFileInputChange);
+
+clearBtn.addEventListener('click', resetUI);
+
+/* handleFileSelect: preview and set 'file' */
+/* NOTE: do NOT replace or reset the input element here — that caused the double-click bug */
+function handleFileSelect(f){
+  // clear visual state but preserve input element so same-file selection triggers reliably
+  preview.style.display='none';
+  preview.innerHTML='';
+  message.textContent='';
+  error.textContent='';
+  progress.style.display='none';
+  bar.style.width='0%';
+  file = f;
+  dropText.textContent = f.name;
+
+  // preview
+  if (f.type && f.type.startsWith('image/')) {
+    const url = URL.createObjectURL(f);
+    preview.style.display='block';
+    preview.innerHTML = `<img src="${url}" alt="preview" style="max-width:100%;border-radius:8px">`;
+  } else if (f.type && f.type.startsWith('audio/')) {
+    const url = URL.createObjectURL(f);
+    preview.style.display='block';
+    preview.innerHTML = `<audio controls src="${url}" style="width:100%"></audio>`;
+  } else if (f.type && f.type.startsWith('video/')) {
+    const url = URL.createObjectURL(f);
+    preview.style.display='block';
+    preview.innerHTML = `<video controls src="${url}" style="width:100%;border-radius:8px"></video>`;
+  } else {
+    preview.style.display='block';
+    preview.innerHTML = `<div class="small">Selected: ${f.name} — ${(f.size/1024|0)} KB</div>`;
+  }
+}
+
+/* same-format helper */
+function getExt(name){ const m = name.split('.'); return m.length>1 ? m.pop().toLowerCase() : ''; }
+
+/* show error helper */
+function showError(msg){ error.textContent = msg; message.textContent=''; }
+
+/* client-side compress helper (safe): used only for 'compress' and only if beneficial */
+async function compressImageClientSide(file, quality=0.8, maxWidth=1280){
+  if(!file || !file.type || !file.type.startsWith('image/')) throw new Error('Not an image');
+  try {
+    const bitmap = await createImageBitmap(file);
+    const ratio = bitmap.width > maxWidth ? maxWidth / bitmap.width : 1;
+    const w = Math.round(bitmap.width * ratio);
+    const h = Math.round(bitmap.height * ratio);
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d'); ctx.drawImage(bitmap, 0, 0, w, h);
+    const outType = 'image/jpeg';
+    return await new Promise((resolve, reject) => {
+      c.toBlob(blob => blob ? resolve(blob) : reject(new Error('Compression failed')), outType, quality);
+    });
+  } catch (e) {
+    return Promise.reject(e);
+  }
+}
+
+/* runProcess: uploads, tracks progress, triggers download */
+function runProcess(){
+  error.textContent = '';
+  message.textContent = '';
+
+  if (!file) return showError('Please upload a file first.');
+  const act = actionSelect.value; // convert|compress
+  const tf = targetFormat.value;
+  if (!tf && act === 'convert') return showError('Please select a target format for convert.');
+
+  const inExt = getExt(file.name);
+  if (tf && inExt === tf.toLowerCase() && act === 'convert') {
+    if (!confirm('File appears to already be in the selected format. Continue?')) return;
+  }
+
+  (async ()=>{
+    const fd = new FormData();
+    if(act === 'compress') fd.append('single', 'true');
+
+    let fileToSend = file;
+    const q = Math.max(10, Math.min(100, Number(qualityEl.value || 80))) / 100;
+
+    // If compress action and image, try safe client-side compress to speed up upload
+    if(act === 'compress' && file.type && file.type.startsWith('image/')){
+      setTimeout(()=>{},0); // allow UI to paint
+      setMessage('Preparing client-side compression (optional)...');
+      try {
+        const blob = await compressImageClientSide(file, q, 1280);
+        if(blob && blob.size < file.size){
+          // use compressed if beneficial
+          fileToSend = new File([blob], file.name.replace(/\.[^/.]+$/, '') + '.jpg', { type: blob.type });
+          setMessage(`Client compression applied: ${(file.size/1024|0)} KB → ${(blob.size/1024|0)} KB. Uploading...`);
+        } else {
+          setMessage('Client compression skipped (no size benefit). Uploading original...');
+        }
+      } catch(e){
+        console.warn('Client compression skipped:', e);
+        setMessage('Client compression skipped; uploading original file...');
+      }
+    }
+
+    fd.append('file', fileToSend, fileToSend.name);
+    fd.append('action', act);
+    if(tf) fd.append('targetFormat', tf);
+    fd.append('quality', String(Math.round(q*100)));
+
+    // Use XHR with progress for compatibility and immediate feedback
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${BACKEND_BASE}/process`, true);
+    xhr.responseType = 'blob';
+    xhr.timeout = 5 * 60 * 1000;
+
+    // immediate visual feedback so UI doesn't feel frozen
+    bar.style.width = '5%'; progress.style.display='block'; setMessage('Starting...');
+
+    xhr.upload.onprogress = function(e){
+      if (e.lengthComputable){
+        const p = Math.round((e.loaded / e.total) * 60);
+        bar.style.width = p + '%';
+        setMessage('Uploading...');
+      }
+    };
+
+    xhr.onprogress = function(e){
+      if (e.lengthComputable){
+        const p = 60 + Math.round((e.loaded / e.total) * 40);
+        bar.style.width = p + '%';
+        setMessage('Processing on server...');
+      }
+    };
+
+    xhr.onload = async function(){
+      progress.style.display='none';
+      bar.style.width = '100%';
+      if(xhr.status >= 200 && xhr.status < 300){
+        const disp = xhr.getResponseHeader('Content-Disposition') || '';
+        let filename = 'result.bin';
+        const m = disp.match(/filename="?([^"]+)"?/);
+        if (m && m[1]) filename = m[1];
+        if(tf && act === 'convert' && !filename.toLowerCase().endsWith('.' + tf)) {
+          filename = filename.replace(/\.[^/.]+$/, '') + '.' + tf;
+        }
+        const blob = xhr.response;
+        try {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(()=>URL.revokeObjectURL(url), 5000);
+          message.textContent = '✅ Done — download started.';
+          // reset input so selecting same file again works on first click
+          const newInput = fileInput.cloneNode(true);
+          fileInput.parentNode.replaceChild(newInput, fileInput);
+          fileInput = newInput;
+          fileInput.addEventListener('change', onFileInputChange);
+        } catch (e){
+          showError('Download failed: ' + (e && e.message ? e.message : 'unknown error'));
+        }
+      } else {
+        try {
+          const text = await xhr.response.text();
+          const json = JSON.parse(text);
+          showError(json.error || ('Server returned ' + xhr.status));
+        } catch (e){
+          showError('Processing failed. Server returned status ' + xhr.status);
+        }
+      }
+    };
+
+    xhr.onerror = function(){ progress.style.display='none'; showError('Network or CORS error.'); };
+    xhr.ontimeout = function(){ progress.style.display='none'; showError('Request timed out.'); };
+
+    // small delay to allow UI to render the Starting state
+    setTimeout(()=> xhr.send(fd), 60);
+  })();
+}
+
+/* wiring */
+goBtn.addEventListener('click', runProcess);
+
+</script>
+</body>
+</html>
+          
 
 
   
