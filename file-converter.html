@@ -639,13 +639,14 @@ input[type="text"]:focus {
 </footer>
   <script src='script.js'> </script>  
 </body>
-</html> 
--->
+</html>
+  -->
+  
+  
 
 
 
-
-<!doctype html>
+    <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -751,11 +752,14 @@ input[type="text"]:focus {
 
 <script>
 /* ----- CONFIG ----- */
-const BACKEND_BASE = 'https://evertoolbox-backend.onrender.com/api/tools/file';
+//const BACKEND_BASE = '/api/tools/file'; // <--- if frontend is separate, set full URL e.g. "https://evertoolbox-backend.onrender.com/api/tools/file"
 /* ------------------ */
 
+const BACKEND_BASE = 'https://evertoolbox-backend.onrender.com/api/tools/file';
+  
+
 const dropZone = document.getElementById('dropZone');
-let fileInput = document.getElementById('fileInput');
+const fileInput = document.getElementById('fileInput');
 const dropText = document.getElementById('dropText');
 const preview = document.getElementById('preview');
 const targetFormat = document.getElementById('targetFormat');
@@ -778,12 +782,8 @@ function resetUI(){
   progress.style.display='none';
   bar.style.width='0%';
   dropText.textContent = 'Click or drop a file here';
+  fileInput.value = '';
   file = null;
-  // reset input (do this on clear or after operation)
-  const newInput = fileInput.cloneNode(true);
-  fileInput.parentNode.replaceChild(newInput, fileInput);
-  fileInput = newInput;
-  fileInput.addEventListener('change', onFileInputChange);
 }
 
 resetUI();
@@ -797,36 +797,27 @@ dropZone.addEventListener('drop', e=> {
   if (e.dataTransfer.files && e.dataTransfer.files.length) handleFileSelect(e.dataTransfer.files[0]);
 });
 
-function onFileInputChange(e){
+fileInput.addEventListener('change', e => {
   if (e.target.files && e.target.files.length) handleFileSelect(e.target.files[0]);
-}
-fileInput.addEventListener('change', onFileInputChange);
+});
 
 clearBtn.addEventListener('click', resetUI);
 
 /* handleFileSelect: preview and set 'file' */
-/* NOTE: do NOT replace or reset the input element here — that caused the double-click bug */
 function handleFileSelect(f){
-  // clear visual state but preserve input element so same-file selection triggers reliably
-  preview.style.display='none';
-  preview.innerHTML='';
-  message.textContent='';
-  error.textContent='';
-  progress.style.display='none';
-  bar.style.width='0%';
+  resetUI();
   file = f;
   dropText.textContent = f.name;
-
   // preview
-  if (f.type && f.type.startsWith('image/')) {
+  if (f.type.startsWith('image/')) {
     const url = URL.createObjectURL(f);
     preview.style.display='block';
     preview.innerHTML = `<img src="${url}" alt="preview" style="max-width:100%;border-radius:8px">`;
-  } else if (f.type && f.type.startsWith('audio/')) {
+  } else if (f.type.startsWith('audio/')) {
     const url = URL.createObjectURL(f);
     preview.style.display='block';
     preview.innerHTML = `<audio controls src="${url}" style="width:100%"></audio>`;
-  } else if (f.type && f.type.startsWith('video/')) {
+  } else if (f.type.startsWith('video/')) {
     const url = URL.createObjectURL(f);
     preview.style.display='block';
     preview.innerHTML = `<video controls src="${url}" style="width:100%;border-radius:8px"></video>`;
@@ -842,27 +833,7 @@ function getExt(name){ const m = name.split('.'); return m.length>1 ? m.pop().to
 /* show error helper */
 function showError(msg){ error.textContent = msg; message.textContent=''; }
 
-/* client-side compress helper (safe): used only for 'compress' and only if beneficial */
-async function compressImageClientSide(file, quality=0.8, maxWidth=1280){
-  if(!file || !file.type || !file.type.startsWith('image/')) throw new Error('Not an image');
-  try {
-    const bitmap = await createImageBitmap(file);
-    const ratio = bitmap.width > maxWidth ? maxWidth / bitmap.width : 1;
-    const w = Math.round(bitmap.width * ratio);
-    const h = Math.round(bitmap.height * ratio);
-    const c = document.createElement('canvas');
-    c.width = w; c.height = h;
-    const ctx = c.getContext('2d'); ctx.drawImage(bitmap, 0, 0, w, h);
-    const outType = 'image/jpeg';
-    return await new Promise((resolve, reject) => {
-      c.toBlob(blob => blob ? resolve(blob) : reject(new Error('Compression failed')), outType, quality);
-    });
-  } catch (e) {
-    return Promise.reject(e);
-  }
-}
-
-/* runProcess: uploads, tracks progress, triggers download */
+/* run process using XHR to show progress and handle blob response or JSON error */
 function runProcess(){
   error.textContent = '';
   message.textContent = '';
@@ -872,117 +843,102 @@ function runProcess(){
   const tf = targetFormat.value;
   if (!tf && act === 'convert') return showError('Please select a target format for convert.');
 
+  // warn when converting to same extension
   const inExt = getExt(file.name);
   if (tf && inExt === tf.toLowerCase() && act === 'convert') {
     if (!confirm('File appears to already be in the selected format. Continue?')) return;
   }
 
-  (async ()=>{
-    const fd = new FormData();
-    if(act === 'compress') fd.append('single', 'true');
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('action', act);
+  if (tf) fd.append('targetFormat', tf);
+  fd.append('quality', String(qualityEl.value || 80));
 
-    let fileToSend = file;
-    const q = Math.max(10, Math.min(100, Number(qualityEl.value || 80))) / 100;
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', `${BACKEND_BASE}/process`, true);
+  xhr.responseType = 'blob';
 
-    // If compress action and image, try safe client-side compress to speed up upload
-    if(act === 'compress' && file.type && file.type.startsWith('image/')){
-      setTimeout(()=>{},0); // allow UI to paint
-      setMessage('Preparing client-side compression (optional)...');
+  xhr.upload.onprogress = function(e){
+    if (e.lengthComputable){
+      progress.style.display='block';
+      const p = Math.round((e.loaded / e.total) * 60); // upload portion
+      bar.style.width = p + '%';
+    }
+  };
+
+  xhr.onprogress = function(e){
+    // download progress (if server streams large response)
+    if (e.lengthComputable){
+      const p = 60 + Math.round((e.loaded / e.total) * 40);
+      bar.style.width = p + '%';
+    }
+  };
+
+  xhr.onload = async function(){
+    progress.style.display='none';
+    if (xhr.status >= 200 && xhr.status < 300){
+      const disp = xhr.getResponseHeader('Content-Disposition') || '';
+      let filename = 'result.bin';
+      const m = disp.match(/filename="?([^"]+)"?/);
+      if (m && m[1]) filename = m[1];
+      // download blob
+      const blob = xhr.response;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 5000);
+      message.textContent = '✅ Done — download started.';
+    } else {
+      // try parse JSON from returned blob
       try {
-        const blob = await compressImageClientSide(file, q, 1280);
-        if(blob && blob.size < file.size){
-          // use compressed if beneficial
-          fileToSend = new File([blob], file.name.replace(/\.[^/.]+$/, '') + '.jpg', { type: blob.type });
-          setMessage(`Client compression applied: ${(file.size/1024|0)} KB → ${(blob.size/1024|0)} KB. Uploading...`);
-        } else {
-          setMessage('Client compression skipped (no size benefit). Uploading original...');
-        }
-      } catch(e){
-        console.warn('Client compression skipped:', e);
-        setMessage('Client compression skipped; uploading original file...');
+        const text = await xhr.response.text();
+        const json = JSON.parse(text);
+        showError(json.error || ('Server returned ' + xhr.status));
+      } catch (e){
+        showError('Processing failed. Server returned status ' + xhr.status);
       }
     }
+  };
 
-    fd.append('file', fileToSend, fileToSend.name);
-    fd.append('action', act);
-    if(tf) fd.append('targetFormat', tf);
-    fd.append('quality', String(Math.round(q*100)));
+  xhr.onerror = function(){
+    progress.style.display='none';
+    showError('Network or CORS error. Check backend reachable and CORS enabled.');
+  };
 
-    // Use XHR with progress for compatibility and immediate feedback
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', `${BACKEND_BASE}/process`, true);
-    xhr.responseType = 'blob';
-    xhr.timeout = 5 * 60 * 1000;
+  xhr.ontimeout = function(){
+    progress.style.display='none';
+    showError('Request timed out. Try again with a smaller file or increase server timeout.');
+  };
 
-    // immediate visual feedback so UI doesn't feel frozen
-    bar.style.width = '5%'; progress.style.display='block'; setMessage('Starting...');
+  // optional XHR timeout (ms)
+  xhr.timeout = 5 * 60 * 1000; // 5 minutes
 
-    xhr.upload.onprogress = function(e){
-      if (e.lengthComputable){
-        const p = Math.round((e.loaded / e.total) * 60);
-        bar.style.width = p + '%';
-        setMessage('Uploading...');
-      }
-    };
-
-    xhr.onprogress = function(e){
-      if (e.lengthComputable){
-        const p = 60 + Math.round((e.loaded / e.total) * 40);
-        bar.style.width = p + '%';
-        setMessage('Processing on server...');
-      }
-    };
-
-    xhr.onload = async function(){
-      progress.style.display='none';
-      bar.style.width = '100%';
-      if(xhr.status >= 200 && xhr.status < 300){
-        const disp = xhr.getResponseHeader('Content-Disposition') || '';
-        let filename = 'result.bin';
-        const m = disp.match(/filename="?([^"]+)"?/);
-        if (m && m[1]) filename = m[1];
-        if(tf && act === 'convert' && !filename.toLowerCase().endsWith('.' + tf)) {
-          filename = filename.replace(/\.[^/.]+$/, '') + '.' + tf;
-        }
-        const blob = xhr.response;
-        try {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
-          setTimeout(()=>URL.revokeObjectURL(url), 5000);
-          message.textContent = '✅ Done — download started.';
-          // reset input so selecting same file again works on first click
-          const newInput = fileInput.cloneNode(true);
-          fileInput.parentNode.replaceChild(newInput, fileInput);
-          fileInput = newInput;
-          fileInput.addEventListener('change', onFileInputChange);
-        } catch (e){
-          showError('Download failed: ' + (e && e.message ? e.message : 'unknown error'));
-        }
-      } else {
-        try {
-          const text = await xhr.response.text();
-          const json = JSON.parse(text);
-          showError(json.error || ('Server returned ' + xhr.status));
-        } catch (e){
-          showError('Processing failed. Server returned status ' + xhr.status);
-        }
-      }
-    };
-
-    xhr.onerror = function(){ progress.style.display='none'; showError('Network or CORS error.'); };
-    xhr.ontimeout = function(){ progress.style.display='none'; showError('Request timed out.'); };
-
-    // small delay to allow UI to render the Starting state
-    setTimeout(()=> xhr.send(fd), 60);
-  })();
+  // Start
+  bar.style.width = '3%';
+  progress.style.display='block';
+  message.textContent = (act === 'convert' ? 'Converting...' : 'Compressing...');
+  xhr.send(fd);
 }
 
-/* wiring */
+/* button wiring */
 goBtn.addEventListener('click', runProcess);
 
+/* quick debug helper: test health */
+async function checkHealth(){
+  try {
+    const res = await fetch(`${BACKEND_BASE}/health`);
+    const j = await res.json();
+    console.log('backend health:', j);
+  } catch (e){
+    console.warn('health check failed', e);
+  }
+}
+checkHealth();
 </script>
 </body>
-</html>
-  
+  </html>
+      
+
 
   
