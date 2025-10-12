@@ -644,7 +644,7 @@ input[type="text"]:focus {
   
   
 
-
+<!--
 <!doctype html>
 <html lang="en">
 <head>
@@ -937,4 +937,227 @@ checkHealth();
 </script>
 </body>
   </html>
- 
+ -->
+
+
+
+
+
+  <!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>EverToolbox — File Converter & Compressor</title>
+  <style>
+    :root{
+      --bg:#f6f8fb; --card:#fff; --accent:#0b75ff; --accent-2:#1fb97a; --muted:#6b7280;
+    }
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:#111}
+    .wrap{max-width:880px;margin:36px auto;padding:22px;background:var(--card);border-radius:12px;box-shadow:0 8px 30px rgba(20,30,60,0.06)}
+    h1{margin:0 0 12px;font-weight:600;color:var(--accent)}
+    .sub{color:var(--muted);margin-bottom:18px}
+    .row{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
+    .col{flex:1;min-width:220px}
+    .drop{border:2px dashed rgba(11,117,255,0.18);padding:18px;border-radius:10px;text-align:center;background:#fbfdff;cursor:pointer;transition:background .2s}
+    .drop.drag{background:#eef7ff}
+    .small{font-size:0.92rem;color:var(--muted)}
+    input[type=file]{display:none}
+    select,input[type=number]{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ee}
+    .controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+    button{background:var(--accent);color:#fff;border:0;padding:10px 16px;border-radius:10px;font-weight:600;cursor:pointer;transition:opacity .2s}
+    button:hover{opacity:.9}
+    button.secondary{background:#475569}
+    .preview{margin-top:18px;border-radius:8px;padding:12px;background:#fbfbfc;border:1px solid #f0f3f7}
+    .progress{height:8px;background:#e6eefb;border-radius:6px;overflow:hidden;margin-top:12px;display:none}
+    .bar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .3s}
+    .msg{margin-top:12px;color:#0b75ff}
+    .error{margin-top:12px;color:#d33}
+    footer{margin-top:20px;font-size:0.85rem;color:#777;text-align:center}
+    .download-btn{display:none;margin-top:12px;background:var(--accent-2)}
+    @media (max-width:640px){ .row{flex-direction:column} }
+  </style>
+</head>
+<body>
+  <div class="wrap" role="main">
+    <h1>File Converter + Compressor</h1>
+    <div class="sub">Upload a file to convert or compress. Works for images, audio, video, PDFs, docs, and text files.</div>
+
+    <label id="dropZone" class="drop">
+      <div id="dropText">Click or drop a file here</div>
+      <input id="fileInput" type="file" accept="*/*" />
+      <div class="small">One file at a time. Speed optimized.</div>
+    </label>
+
+    <div class="row" style="margin-top:12px">
+      <div class="col">
+        <label class="small">Target format</label>
+        <select id="targetFormat">
+          <option value="">— Keep same (for compression) —</option>
+          <optgroup label="Images">
+            <option value="jpeg">JPEG</option><option value="png">PNG</option>
+            <option value="webp">WEBP</option><option value="avif">AVIF</option>
+          </optgroup>
+          <optgroup label="Documents">
+            <option value="pdf">PDF</option><option value="txt">TXT</option>
+            <option value="docx">DOCX</option><option value="html">HTML</option>
+          </optgroup>
+          <optgroup label="Audio">
+            <option value="mp3">MP3</option><option value="wav">WAV</option>
+          </optgroup>
+          <optgroup label="Video">
+            <option value="mp4">MP4</option><option value="webm">WEBM</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div style="width:120px">
+        <label class="small">Quality</label>
+        <input id="quality" type="number" min="10" max="100" value="80" />
+      </div>
+
+      <div style="width:140px">
+        <label class="small">Action</label>
+        <select id="actionSelect">
+          <option value="convert">Convert</option>
+          <option value="compress">Compress</option>
+        </select>
+      </div>
+
+      <div style="display:flex;align-items:flex-end;gap:8px">
+        <button id="goBtn">Run</button>
+        <button id="clearBtn" class="secondary">Clear</button>
+      </div>
+    </div>
+
+    <div class="progress" id="progress"><div class="bar" id="bar"></div></div>
+    <div id="preview" class="preview" style="display:none"></div>
+    <button id="downloadBtn" class="download-btn">Download File</button>
+    <div id="message" class="msg"></div>
+    <div id="error" class="error"></div>
+    <footer>© EverToolbox — secure, fast & reliable conversions</footer>
+  </div>
+
+<script>
+const BACKEND_BASE = 'https://evertoolbox-backend.onrender.com/api/tools/file';
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const dropText = document.getElementById('dropText');
+const preview = document.getElementById('preview');
+const targetFormat = document.getElementById('targetFormat');
+const qualityEl = document.getElementById('quality');
+const actionSelect = document.getElementById('actionSelect');
+const goBtn = document.getElementById('goBtn');
+const clearBtn = document.getElementById('clearBtn');
+const progress = document.getElementById('progress');
+const bar = document.getElementById('bar');
+const message = document.getElementById('message');
+const error = document.getElementById('error');
+const downloadBtn = document.getElementById('downloadBtn');
+
+let file = null;
+let downloadUrl = null;
+
+function resetUI(){
+  preview.style.display='none';
+  preview.innerHTML='';
+  message.textContent='';
+  error.textContent='';
+  progress.style.display='none';
+  bar.style.width='0%';
+  dropText.textContent='Click or drop a file here';
+  downloadBtn.style.display='none';
+  fileInput.value='';
+  file=null;
+}
+resetUI();
+
+dropZone.addEventListener('click', ()=>fileInput.click());
+dropZone.addEventListener('dragover', e=>{e.preventDefault();dropZone.classList.add('drag');});
+dropZone.addEventListener('dragleave', ()=>dropZone.classList.remove('drag'));
+dropZone.addEventListener('drop', e=>{
+  e.preventDefault();dropZone.classList.remove('drag');
+  if(e.dataTransfer.files?.length) handleFileSelect(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e=>{
+  if(e.target.files?.length) handleFileSelect(e.target.files[0]);
+});
+clearBtn.addEventListener('click', resetUI);
+
+function handleFileSelect(f){
+  resetUI();
+  file=f;
+  dropText.textContent=f.name;
+  if(f.type.startsWith('image/')){
+    const url=URL.createObjectURL(f);
+    preview.style.display='block';
+    preview.innerHTML=`<img src="${url}" alt="preview" style="max-width:100%;border-radius:8px">`;
+  }else if(f.type.startsWith('audio/')){
+    const url=URL.createObjectURL(f);
+    preview.style.display='block';
+    preview.innerHTML=`<audio controls src="${url}" style="width:100%"></audio>`;
+  }else if(f.type.startsWith('video/')){
+    const url=URL.createObjectURL(f);
+    preview.style.display='block';
+    preview.innerHTML=`<video controls src="${url}" style="width:100%;border-radius:8px"></video>`;
+  }else{
+    preview.style.display='block';
+    preview.innerHTML=`<div class="small">${f.name} — ${(f.size/1024|0)} KB</div>`;
+  }
+}
+
+function showError(msg){error.textContent=msg;message.textContent='';}
+function getExt(name){const m=name.split('.');return m.length>1?m.pop().toLowerCase():'';}
+
+function runProcess(){
+  if(!file) return showError('Please upload a file first.');
+  const act=actionSelect.value;
+  const tf=targetFormat.value;
+  if(!tf && act==='convert') return showError('Select a target format.');
+
+  const inExt=getExt(file.name);
+  if(tf && inExt===tf && act==='convert') if(!confirm('Same format — continue?')) return;
+
+  const fd=new FormData();
+  fd.append('file',file);
+  fd.append('action',act);
+  if(tf) fd.append('targetFormat',tf);
+  fd.append('quality',qualityEl.value||80);
+
+  const xhr=new XMLHttpRequest();
+  xhr.open('POST',`${BACKEND_BASE}/process`,true);
+  xhr.responseType='blob';
+  xhr.upload.onprogress=e=>{
+    if(e.lengthComputable){progress.style.display='block';bar.style.width=Math.round((e.loaded/e.total)*50)+'%';}
+  };
+  xhr.onprogress=e=>{
+    if(e.lengthComputable){bar.style.width=(50+Math.round((e.loaded/e.total)*50))+'%';}
+  };
+  xhr.onload=async()=>{
+    progress.style.display='none';
+    if(xhr.status>=200&&xhr.status<300){
+      const disp=xhr.getResponseHeader('Content-Disposition')||'';
+      let filename='result';
+      const m=disp.match(/filename="?([^"]+)"?/);
+      if(m&&m[1]) filename=m[1].replace('.bin','');
+      const blob=xhr.response;
+      downloadUrl=URL.createObjectURL(blob);
+      downloadBtn.style.display='inline-block';
+      downloadBtn.onclick=()=>{
+        const a=document.createElement('a');
+        a.href=downloadUrl;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+      };
+      message.textContent='✅ Done — ready to download below.';
+    }else showError('Processing failed ('+xhr.status+').');
+  };
+  xhr.onerror=()=>{progress.style.display='none';showError('Network/CORS error.');};
+  xhr.timeout=5*60*1000;
+  xhr.send(fd);
+  message.textContent=act==='convert'?'Converting...':'Compressing...';
+  progress.style.display='block';bar.style.width='10%';
+}
+goBtn.addEventListener('click',runProcess);
+</script>
+</body>
+</html>
+
