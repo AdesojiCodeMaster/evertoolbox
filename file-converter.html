@@ -317,228 +317,137 @@ input[type="text"]:focus {
 
 
 
-
-
-<!doctype html>
+  <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>EverToolbox — Converter & Compressor</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>EverToolbox — File Converter & Compressor</title>
 <style>
-  :root{--bg:#f6f8fb;--card:#fff;--accent:#0b75ff;--accent-2:#16b981;--muted:#6b7280}
-  body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:#111}
-  .wrap{max-width:880px;margin:36px auto;padding:22px;background:var(--card);border-radius:12px;box-shadow:0 8px 30px rgba(20,30,60,0.06)}
-  h1{margin:0 0 12px;font-weight:600;color:var(--accent)}
-  .sub{color:var(--muted);margin-bottom:18px}
-  .row{display:flex;gap:18px;flex-wrap:wrap;align-items:center}
-  .col{flex:1;min-width:220px}
-  .drop{border:2px dashed rgba(11,117,255,0.18);padding:18px;border-radius:10px;text-align:center;background:#fbfdff;cursor:pointer}
-  .drop.drag{background:#eef7ff}
-  .small{font-size:0.92rem;color:var(--muted)}
-  input[type=file]{display:none}
-  select,input[type=number]{width:100%;padding:10px;border-radius:8px;border:1px solid #e6e9ee}
-  button{background:var(--accent);color:#fff;border:0;padding:10px 16px;border-radius:10px;font-weight:600;cursor:pointer}
-  button.secondary{background:#475569}
-  .preview{margin-top:18px;border-radius:8px;padding:12px;background:#fbfbfc;border:1px solid #f0f3f7;display:none}
-  .progress{height:8px;background:#e6eefb;border-radius:6px;overflow:hidden;margin-top:12px;display:none}
-  .bar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .25s}
-  .msg{margin-top:12px;color:#0b75ff}
-  .error{margin-top:12px;color:#d33}
-  .download-btn{display:none;margin-top:12px;background:var(--accent-2);color:#fff;border-radius:8px;padding:10px 14px;border:0;cursor:pointer}
-  footer{margin-top:20px;font-size:0.85rem;color:var(--muted);text-align:center}
+:root {
+  --bg:#f4f7fb; --card:#fff; --accent:#007aff; --accent2:#1ed760; --muted:#6b7280;
+}
+body {
+  font-family:Inter,system-ui,sans-serif; background:var(--bg); color:#111; margin:0; padding:0;
+}
+.container {
+  max-width:880px; margin:40px auto; background:var(--card); border-radius:16px;
+  padding:28px; box-shadow:0 4px 20px rgba(0,0,0,.05);
+}
+h1 { color:var(--accent); margin:0 0 8px; }
+.sub { color:var(--muted); margin-bottom:16px; }
+.drop { border:2px dashed #c8d8ff; border-radius:12px; padding:26px; text-align:center;
+  cursor:pointer; transition:0.3s; background:#f9fbff;
+}
+.drop.drag { background:#eaf3ff; }
+input[type=file] { display:none; }
+button {
+  border:none; border-radius:10px; padding:10px 18px; cursor:pointer; font-weight:600;
+}
+.btn-main { background:var(--accent); color:#fff; }
+.btn-secondary { background:#475569; color:#fff; }
+.preview { margin-top:16px; border-radius:10px; padding:12px; background:#fafafa; }
+.progress { height:8px; background:#e8eef8; border-radius:8px; overflow:hidden; display:none; margin-top:12px; }
+.bar { height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent2)); transition:width 0.3s; }
+.msg { margin-top:10px; color:var(--accent); font-weight:500; }
+.error { margin-top:10px; color:#d33; font-weight:500; }
+footer { text-align:center; margin-top:30px; color:var(--muted); font-size:0.9rem; }
 </style>
 </head>
 <body>
-  <div class="wrap" role="main">
-    <h1>EverToolbox — File Converter & Compressor</h1>
-    <div class="sub">Upload a single file, preview if supported, then Convert or Compress. Supported: images, PDF, audio, video, text.</div>
+<div class="container">
+<h1>File Converter + Compressor</h1>
+<div class="sub">Convert or compress any file: image, document, audio, or video. Secure, fast, and easy to use.</div>
 
-    <label id="dropZone" class="drop" tabindex="0">
-      <div id="dropText">Click or drop a file here</div>
-      <input id="fileInput" type="file" accept="*/*" />
-      <div class="small" style="margin-top:6px">One file at a time. Server limits apply.</div>
-    </label>
+<label id="dropZone" class="drop">
+  <div id="dropText">Click or drop a file here</div>
+  <input id="fileInput" type="file" accept="*/*" />
+</label>
 
-    <div class="row" style="margin-top:12px">
-      <div class="col">
-        <label class="small">Target format</label>
-        <select id="targetFormat">
-          <option value="">— keep same (compress) —</option>
-          <optgroup label="Images"><option value="jpeg">jpeg</option><option value="png">png</option><option value="webp">webp</option><option value="avif">avif</option><option value="pdf">pdf</option></optgroup>
-          <optgroup label="Docs"><option value="pdf">pdf</option><option value="txt">txt</option><option value="docx">docx</option></optgroup>
-          <optgroup label="Audio"><option value="mp3">mp3</option><option value="wav">wav</option></optgroup>
-          <optgroup label="Video"><option value="mp4">mp4</option><option value="webm">webm</option></optgroup>
-        </select>
-      </div>
+<div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;">
+  <select id="targetFormat">
+    <option value="">— keep same format —</option>
+    <optgroup label="Images"><option>jpeg</option><option>png</option><option>webp</option><option>avif</option><option>pdf</option></optgroup>
+    <optgroup label="Docs"><option>pdf</option><option>txt</option><option>docx</option><option>html</option></optgroup>
+    <optgroup label="Audio"><option>mp3</option><option>wav</option><option>ogg</option></optgroup>
+    <optgroup label="Video"><option>mp4</option><option>webm</option><option>mov</option></optgroup>
+  </select>
+  <select id="actionSelect"><option value="convert">Convert</option><option value="compress">Compress</option></select>
+  <input id="quality" type="number" value="80" min="10" max="100" style="width:80px">
+  <button class="btn-main" id="runBtn">Run</button>
+  <button class="btn-secondary" id="clearBtn">Clear</button>
+</div>
 
-      <div style="width:120px"><label class="small">Quality</label><input id="quality" type="number" min="10" max="95" value="80" /></div>
+<div class="progress"><div class="bar"></div></div>
+<div class="preview" id="preview" style="display:none;"></div>
+<div class="msg" id="msg"></div>
+<div class="error" id="err"></div>
 
-      <div style="width:140px"><label class="small">Action</label><select id="actionSelect"><option value="convert">Convert</option><option value="compress">Compress</option></select></div>
-
-      <div style="display:flex;align-items:flex-end;gap:8px"><button id="goBtn">Run</button><button id="clearBtn" class="secondary">Clear</button></div>
-    </div>
-
-    <div class="progress" id="progress"><div class="bar" id="bar"></div></div>
-    <div id="preview" class="preview" aria-live="polite"></div>
-    <button id="downloadBtn" class="download-btn">⬇ Download result</button>
-    <div id="message" class="msg"></div>
-    <div id="error" class="error"></div>
-    <footer>© EverToolbox — secure, fast & accurate conversions</footer>
-  </div>
+<footer>© EverToolbox — advanced file processing</footer>
+</div>
 
 <script>
-const BACKEND_BASE = 'https://evertoolbox-backend.onrender.com/api/tools/file'; // NOTE: backend route mounted at /api/tools/file/process
+const API = "https://evertoolbox-backend.onrender.com/api/tools/file";
+const drop = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
-const dropZone = document.getElementById('dropZone');
-const dropText = document.getElementById('dropText');
 const preview = document.getElementById('preview');
-const targetFormat = document.getElementById('targetFormat');
-const qualityEl = document.getElementById('quality');
-const actionSelect = document.getElementById('actionSelect');
-const goBtn = document.getElementById('goBtn');
-const clearBtn = document.getElementById('clearBtn');
-const progress = document.getElementById('progress');
-const bar = document.getElementById('bar');
-const message = document.getElementById('message');
-const errorBox = document.getElementById('error');
-const downloadBtn = document.getElementById('downloadBtn');
+const msg = document.getElementById('msg');
+const err = document.getElementById('err');
+const bar = document.querySelector('.bar');
+const progress = document.querySelector('.progress');
+let file = null;
 
-let currentFile = null;
-let currentBlobUrl = null;
+drop.addEventListener('click', ()=> fileInput.click());
+drop.addEventListener('dragover', e=>{e.preventDefault(); drop.classList.add('drag');});
+drop.addEventListener('dragleave', ()=> drop.classList.remove('drag'));
+drop.addEventListener('drop', e=>{
+  e.preventDefault(); drop.classList.remove('drag');
+  handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e=> handleFile(e.target.files[0]));
 
-function resetUI(){
-  preview.style.display='none'; preview.innerHTML='';
-  message.textContent=''; errorBox.textContent='';
-  progress.style.display='none'; bar.style.width='0%';
-  dropText.textContent='Click or drop a file here';
-  downloadBtn.style.display='none';
-  if(currentBlobUrl){ URL.revokeObjectURL(currentBlobUrl); currentBlobUrl=null; }
-  fileInput.value = '';
-  currentFile = null;
-}
-resetUI();
-
-dropZone.addEventListener('click', ()=> fileInput.click());
-dropZone.addEventListener('dragover', e=>{ e.preventDefault(); dropZone.classList.add('drag'); });
-dropZone.addEventListener('dragleave', ()=> dropZone.classList.remove('drag'));
-dropZone.addEventListener('drop', e=> { e.preventDefault(); dropZone.classList.remove('drag'); if(e.dataTransfer.files && e.dataTransfer.files.length) handleFileSelect(e.dataTransfer.files[0]); });
-fileInput.addEventListener('change', e=> { if(e.target.files && e.target.files.length) handleFileSelect(e.target.files[0]); });
-clearBtn.addEventListener('click', resetUI);
-
-function getExt(n){ const p=n.split('.'); return p.length>1?p.pop().toLowerCase():''; }
-
-function handleFileSelect(f){
-  preview.innerHTML=''; message.textContent=''; errorBox.textContent='';
-  currentFile = f;
-  dropText.textContent = f.name;
-  // PDF preview
-  if (f.type === 'application/pdf' || getExt(f.name)==='pdf') {
-    const url = URL.createObjectURL(f);
-    preview.style.display='block';
-    preview.innerHTML = `<object data="${url}" type="application/pdf" width="100%" height="360">PDF preview not available — <a href="${url}" download>download</a></object>`;
-    currentBlobUrl = url;
-    return;
-  }
-  // image
-  if (f.type && f.type.startsWith('image/')) {
-    const url = URL.createObjectURL(f);
-    preview.style.display='block';
-    preview.innerHTML = `<img src="${url}" alt="preview" style="max-width:100%;border-radius:8px;max-height:360px;object-fit:contain">`;
-    currentBlobUrl = url;
-    return;
-  }
-  // audio/video
-  if (f.type && f.type.startsWith('audio/')) {
-    const url = URL.createObjectURL(f);
-    preview.style.display='block';
-    preview.innerHTML = `<audio controls src="${url}" style="width:100%"></audio>`;
-    currentBlobUrl = url;
-    return;
-  }
-  if (f.type && f.type.startsWith('video/')) {
-    const url = URL.createObjectURL(f);
-    preview.style.display='block';
-    preview.innerHTML = `<video controls src="${url}" style="width:100%;max-height:360px"></video>`;
-    currentBlobUrl = url;
-    return;
-  }
+function handleFile(f){
+  file = f;
+  drop.querySelector('#dropText').textContent = f.name;
   preview.style.display='block';
-  preview.innerHTML = `<div class="small">Selected: ${f.name} — ${(f.size/1024|0)} KB</div>`;
+  if (f.type.startsWith('image/')) preview.innerHTML=`<img src="${URL.createObjectURL(f)}" style="max-width:100%;border-radius:10px;">`;
+  else if (f.type.startsWith('audio/')) preview.innerHTML=`<audio controls src="${URL.createObjectURL(f)}" style="width:100%"></audio>`;
+  else if (f.type.startsWith('video/')) preview.innerHTML=`<video controls src="${URL.createObjectURL(f)}" style="width:100%;border-radius:10px;"></video>`;
+  else preview.textContent = "Selected: " + f.name + " (" + Math.round(f.size/1024) + " KB)";
 }
 
-function cleanFilename(name){
-  return name.replace(/\.bin/ig, '').replace(/\s+/g,'_');
-}
-
-function extFromMime(blob){
-  try {
-    if(!blob || !blob.type) return 'bin';
-    const map = {'image/jpeg':'jpg','image/png':'png','image/webp':'webp','application/pdf':'pdf','audio/mpeg':'mp3','video/mp4':'mp4'};
-    return map[blob.type] || blob.type.split('/').pop() || 'bin';
-  } catch(e) { return 'bin'; }
-}
-
-async function runProcess(){
-  if(!currentFile) return errorBox.textContent = 'Please upload a file first.';
-  const act = actionSelect.value;
-  const tf = targetFormat.value;
-  if(act === 'convert' && !tf) return errorBox.textContent = 'Please select a target format for convert.';
-  message.textContent = act === 'convert' ? 'Converting...' : 'Compressing...';
-  progress.style.display='block'; bar.style.width='6%'; errorBox.textContent='';
-
-  const fd = new FormData();
-  fd.append('file', currentFile);
-  fd.append('action', act);
-  if(tf) fd.append('targetFormat', tf);
-  fd.append('quality', String(Math.max(8, Math.min(95, Number(qualityEl.value || 80)))));
+document.getElementById('runBtn').onclick = async () => {
+  if(!file){err.textContent="Please select a file first.";return;}
+  err.textContent=''; msg.textContent='Processing...';
+  const form = new FormData();
+  form.append('file',file);
+  form.append('action',document.getElementById('actionSelect').value);
+  form.append('targetFormat',document.getElementById('targetFormat').value);
+  form.append('quality',document.getElementById('quality').value);
   const xhr = new XMLHttpRequest();
-  xhr.open('POST', `${BACKEND_BASE}/process`, true);
-  xhr.responseType = 'blob';
-  xhr.timeout = 8 * 60 * 1000;
-
-  xhr.upload.onprogress = e => {
-    if(e.lengthComputable){ const p = Math.round((e.loaded / e.total) * 60); bar.style.width = p + '%'; message.textContent = 'Uploading...'; }
+  xhr.open('POST', API+'/process', true);
+  xhr.responseType='blob';
+  xhr.upload.onprogress = e=>{
+    if(e.lengthComputable){ progress.style.display='block'; bar.style.width=(e.loaded/e.total*100)+'%'; }
   };
-  xhr.onprogress = e => {
-    if(e.lengthComputable){ const p = 60 + Math.round((e.loaded / e.total) * 40); bar.style.width = p + '%'; message.textContent = 'Processing on server...'; }
-  };
-
-  xhr.onload = async () => {
+  xhr.onload=()=>{
     progress.style.display='none';
-    if(xhr.status >= 200 && xhr.status < 300){
-      const blob = xhr.response;
-      const disp = xhr.getResponseHeader('Content-Disposition') || '';
-      const m = disp.match(/filename="?([^"]+)"?/);
-      let filename = m && m[1] ? m[1] : (cleanFilename(currentFile.name.replace(/\.[^/.]+$/, '')) + '.' + (tf || extFromMime(blob)));
-      filename = filename.replace(/\.bin/ig,'');
-      if(currentBlobUrl) { URL.revokeObjectURL(currentBlobUrl); currentBlobUrl = null; }
-      currentBlobUrl = URL.createObjectURL(blob);
-      downloadBtn.style.display='inline-block';
-      downloadBtn.onclick = () => {
-        const a = document.createElement('a'); a.href = currentBlobUrl; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
-      };
-      message.textContent = '✅ Done — result ready for download.';
-      fileInput.value = ''; // allow selecting same file later
-    } else {
-      try {
-        const text = await xhr.response.text();
-        const j = JSON.parse(text);
-        errorBox.textContent = j.error || ('Server returned ' + xhr.status);
-      } catch(e) {
-        errorBox.textContent = 'Processing failed. Server returned ' + xhr.status;
-      }
-    }
+    if(xhr.status==200){
+      const url=URL.createObjectURL(xhr.response);
+      const a=document.createElement('a');
+      a.href=url;
+      a.download=file.name.replace(/\.\w+$/, '') + '.' + (document.getElementById('targetFormat').value||'compressed');
+      a.textContent='Download Result';
+      a.className='btn-main';
+      msg.innerHTML='';
+      msg.appendChild(a);
+    }else err.textContent='❌ Failed. Try smaller file or check format.';
   };
-
-  xhr.onerror = () => { progress.style.display='none'; errorBox.textContent = 'Network or CORS error.'; };
-  xhr.ontimeout = () => { progress.style.display='none'; errorBox.textContent = 'Request timed out.'; };
-
-  xhr.send(fd);
-}
-
-goBtn.addEventListener('click', runProcess);
+  xhr.onerror=()=>{err.textContent='Network error';progress.style.display='none';};
+  xhr.send(form);
+};
+document.getElementById('clearBtn').onclick=()=>{file=null;fileInput.value='';drop.querySelector('#dropText').textContent='Click or drop a file here';preview.style.display='none';msg.textContent='';err.textContent='';bar.style.width='0%';progress.style.display='none';};
 </script>
 </body>
 </html>
-                                                                                                    
+    
