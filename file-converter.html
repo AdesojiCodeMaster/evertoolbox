@@ -317,7 +317,10 @@ input[type="text"]:focus {
 
 
 
-  <!doctype html>
+  
+  
+  
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
@@ -325,17 +328,17 @@ input[type="text"]:focus {
 <title>EverToolbox — File Converter & Compressor</title>
 <style>
 :root {
-  --bg:#f4f7fb; --card:#fff; --accent:#007aff; --accent2:#1ed760; --muted:#6b7280;
+  --bg:#f6f9ff; --card:#fff; --accent:#007aff; --accent2:#10b981; --muted:#6b7280;
 }
 body {
   font-family:Inter,system-ui,sans-serif; background:var(--bg); color:#111; margin:0; padding:0;
 }
 .container {
   max-width:880px; margin:40px auto; background:var(--card); border-radius:16px;
-  padding:28px; box-shadow:0 4px 20px rgba(0,0,0,.05);
+  padding:28px; box-shadow:0 4px 20px rgba(0,0,0,.08);
 }
-h1 { color:var(--accent); margin:0 0 8px; }
-.sub { color:var(--muted); margin-bottom:16px; }
+h1 { color:var(--accent); margin-bottom:8px; }
+.sub { color:var(--muted); margin-bottom:18px; }
 .drop { border:2px dashed #c8d8ff; border-radius:12px; padding:26px; text-align:center;
   cursor:pointer; transition:0.3s; background:#f9fbff;
 }
@@ -349,15 +352,16 @@ button {
 .preview { margin-top:16px; border-radius:10px; padding:12px; background:#fafafa; }
 .progress { height:8px; background:#e8eef8; border-radius:8px; overflow:hidden; display:none; margin-top:12px; }
 .bar { height:100%; width:0%; background:linear-gradient(90deg,var(--accent),var(--accent2)); transition:width 0.3s; }
-.msg { margin-top:10px; color:var(--accent); font-weight:500; }
-.error { margin-top:10px; color:#d33; font-weight:500; }
+.msg, .error { margin-top:12px; font-weight:500; }
+.msg { color:var(--accent); }
+.error { color:#d33; }
 footer { text-align:center; margin-top:30px; color:var(--muted); font-size:0.9rem; }
 </style>
 </head>
 <body>
 <div class="container">
 <h1>File Converter + Compressor</h1>
-<div class="sub">Convert or compress any file: image, document, audio, or video. Secure, fast, and easy to use.</div>
+<div class="sub">Convert or compress any file: image, document, audio, or video — fast, simple & secure.</div>
 
 <label id="dropZone" class="drop">
   <div id="dropText">Click or drop a file here</div>
@@ -372,7 +376,10 @@ footer { text-align:center; margin-top:30px; color:var(--muted); font-size:0.9re
     <optgroup label="Audio"><option>mp3</option><option>wav</option><option>ogg</option></optgroup>
     <optgroup label="Video"><option>mp4</option><option>webm</option><option>mov</option></optgroup>
   </select>
-  <select id="actionSelect"><option value="convert">Convert</option><option value="compress">Compress</option></select>
+  <select id="actionSelect">
+    <option value="convert">Convert</option>
+    <option value="compress">Compress</option>
+  </select>
   <input id="quality" type="number" value="80" min="10" max="100" style="width:80px">
   <button class="btn-main" id="runBtn">Run</button>
   <button class="btn-secondary" id="clearBtn">Clear</button>
@@ -383,7 +390,7 @@ footer { text-align:center; margin-top:30px; color:var(--muted); font-size:0.9re
 <div class="msg" id="msg"></div>
 <div class="error" id="err"></div>
 
-<footer>© EverToolbox — advanced file processing</footer>
+<footer>© EverToolbox — Smart File Tools</footer>
 </div>
 
 <script>
@@ -395,6 +402,8 @@ const msg = document.getElementById('msg');
 const err = document.getElementById('err');
 const bar = document.querySelector('.bar');
 const progress = document.querySelector('.progress');
+const formatSelect = document.getElementById('targetFormat');
+const actionSelect = document.getElementById('actionSelect');
 let file = null;
 
 drop.addEventListener('click', ()=> fileInput.click());
@@ -418,11 +427,14 @@ function handleFile(f){
 
 document.getElementById('runBtn').onclick = async () => {
   if(!file){err.textContent="Please select a file first.";return;}
+  if(actionSelect.value==='convert' && !formatSelect.value){err.textContent="Please select a target format.";return;}
+  if(actionSelect.value==='convert' && file.name.toLowerCase().endsWith('.'+formatSelect.value.toLowerCase())){err.textContent="File is already in that format.";return;}
+  if(actionSelect.value==='compress'){formatSelect.value='';}
   err.textContent=''; msg.textContent='Processing...';
   const form = new FormData();
   form.append('file',file);
-  form.append('action',document.getElementById('actionSelect').value);
-  form.append('targetFormat',document.getElementById('targetFormat').value);
+  form.append('action',actionSelect.value);
+  form.append('targetFormat',formatSelect.value);
   form.append('quality',document.getElementById('quality').value);
   const xhr = new XMLHttpRequest();
   xhr.open('POST', API+'/process', true);
@@ -436,18 +448,27 @@ document.getElementById('runBtn').onclick = async () => {
       const url=URL.createObjectURL(xhr.response);
       const a=document.createElement('a');
       a.href=url;
-      a.download=file.name.replace(/\.\w+$/, '') + '.' + (document.getElementById('targetFormat').value||'compressed');
-      a.textContent='Download Result';
+      a.download=file.name.replace(/\.\w+$/, '') + '.' + (formatSelect.value||'compressed');
+      a.textContent='⬇ Download File';
       a.className='btn-main';
       msg.innerHTML='';
       msg.appendChild(a);
-    }else err.textContent='❌ Failed. Try smaller file or check format.';
+      msg.insertAdjacentHTML('beforeend','<div>✅ Completed successfully.</div>');
+    } else {
+      err.textContent='❌ '+(xhr.response?.error || 'Failed. Try smaller file or check format.');
+    }
   };
   xhr.onerror=()=>{err.textContent='Network error';progress.style.display='none';};
   xhr.send(form);
 };
-document.getElementById('clearBtn').onclick=()=>{file=null;fileInput.value='';drop.querySelector('#dropText').textContent='Click or drop a file here';preview.style.display='none';msg.textContent='';err.textContent='';bar.style.width='0%';progress.style.display='none';};
+
+document.getElementById('clearBtn').onclick=()=>{
+  file=null;fileInput.value='';
+  drop.querySelector('#dropText').textContent='Click or drop a file here';
+  preview.style.display='none';msg.textContent='';err.textContent='';
+  bar.style.width='0%';progress.style.display='none';
+};
 </script>
 </body>
 </html>
-    
+
