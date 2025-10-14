@@ -449,7 +449,7 @@ document.getElementById('runBtn').onclick = async () => {
       const a=document.createElement('a');
       a.href=url;
       a.download=file.name.replace(/\.\w+$/, '') + '.' + (formatSelect.value||'compressed');
-      a.textContent='⬇ Download File';
+    <button> a.textContent='⬇ Download File';</button>
       a.className='btn-main';
       msg.innerHTML='';
       msg.appendChild(a);
