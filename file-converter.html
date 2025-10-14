@@ -319,6 +319,7 @@ input[type="text"]:focus {
 
 
   
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -327,71 +328,73 @@ input[type="text"]:focus {
 <title>Universal File Tool</title>
 <style>
   *{box-sizing:border-box;font-family:Inter,-apple-system,system-ui,Segoe UI,Roboto,Helvetica,Arial;}
-  body{margin:0;background:#f8fafc;color:#111;}
-  .card{max-width:920px;margin:44px auto;background:#fff;border-radius:16px;padding:28px;box-shadow:0 10px 30px rgba(15,23,42,0.06);}
-  h1{margin:0 0 6px;color:#0f62ff;text-align:center;}
-  p.lead{text-align:center;color:#6b7280;margin:0 0 18px;}
-  .drop{border:2px dashed #dbeafe;border-radius:12px;padding:28px;text-align:center;background:#fbfdff;cursor:pointer;}
+  body{margin:0;background:#f6f8fb;color:#0b1220;}
+  .card{max-width:920px;margin:48px auto;background:#fff;border-radius:16px;padding:28px;box-shadow:0 12px 40px rgba(8,15,30,0.06);}
+  header{text-align:center;margin-bottom:8px}
+  h1{margin:0;color:#0b6bff}
+  p.lead{color:#6b7280;margin-top:6px}
+  .drop{border:2px dashed #dbeafe;border-radius:12px;padding:26px;text-align:center;background:#fbfdff;cursor:pointer;margin-top:18px}
   .drop.drag{background:#eef6ff}
   input[type=file]{display:none}
-  .controls{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:18px}
-  select,input[type=number]{padding:10px;border-radius:10px;border:1px solid #e6eef8;min-height:42px}
-  button{padding:10px 16px;border-radius:10px;border:0;cursor:pointer;font-weight:700}
-  .btn-primary{background:#0f62ff;color:#fff}
-  .btn-ghost{background:#f1f5f9;color:#0b1220}
-  .progress{height:10px;background:#eef2ff;border-radius:999px;overflow:hidden;margin-top:16px;display:none}
-  .bar{height:100%;width:0;background:linear-gradient(90deg,#0f62ff,#10b981);transition:width .25s}
+  .controls{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:16px}
+  select,input[type=number]{padding:10px;border-radius:8px;border:1px solid #e6eef8;min-height:42px}
+  button{padding:10px 14px;border-radius:8px;border:0;cursor:pointer;font-weight:700}
+  .primary{background:#0b6bff;color:#fff}
+  .secondary{background:#f1f5f9;color:#0b1220}
+  .progress{height:10px;background:#eef4ff;border-radius:999px;overflow:hidden;margin-top:16px;display:none}
+  .bar{height:100%;width:0;background:linear-gradient(90deg,#0b6bff,#10b981);transition:width .25s}
   .status{margin-top:14px;text-align:center;font-weight:600}
-  .status.success{color:#0f62ff}
+  .status.success{color:#0b6bff}
   .status.error{color:#dc2626}
-  .download-btn{display:inline-block;background:#10b981;color:#fff;padding:10px 16px;border-radius:10px;border:none;font-weight:700;margin-top:10px}
+  .download-btn{display:inline-block;background:#10b981;color:#fff;padding:10px 16px;border-radius:8px;margin-top:12px;text-decoration:none;font-weight:700}
   footer{margin-top:22px;text-align:center;color:#94a3b8;font-size:.92rem}
 </style>
 </head>
 <body>
-<div class="card" role="main">
-  <h1>Universal File Tool</h1>
-  <p class="lead">Convert or compress images, documents, audio and video. One page — simple UI.</p>
+  <div class="card" role="main">
+    <header>
+      <h1>Universal File Tool</h1>
+      <p class="lead">Convert & compress images, documents, audio and video — single page, professional UI.</p>
+    </header>
 
-  <!-- single-click label for native open -->
-  <label class="drop" for="fileInput" id="dropZone">
-    <div id="dropText">Click or drop a file here</div>
-    <input id="fileInput" type="file" accept="*/*" />
-  </label>
+    <label for="fileInput" class="drop" id="dropZone">
+      <div id="dropText">Click or drop a file here</div>
+      <input id="fileInput" type="file" accept="*/*">
+    </label>
 
-  <div class="controls" aria-hidden="false">
-    <select id="actionSelect" aria-label="Action">
-      <option value="convert">Convert</option>
-      <option value="compress">Compress</option>
-    </select>
+    <div class="controls" role="region" aria-label="controls">
+      <select id="actionSelect" aria-label="Action">
+        <option value="convert">Convert</option>
+        <option value="compress">Compress</option>
+      </select>
 
-    <select id="formatSelect" aria-label="Target format">
-      <option value="">Keep same format</option>
-      <optgroup label="Images"><option>jpeg</option><option>png</option><option>webp</option><option>avif</option><option>pdf</option></optgroup>
-      <optgroup label="Docs"><option>pdf</option><option>txt</option><option>html</option></optgroup>
-      <optgroup label="Audio"><option>mp3</option><option>wav</option><option>ogg</option></optgroup>
-      <optgroup label="Video"><option>mp4</option><option>webm</option><option>mov</option></optgroup>
-    </select>
+      <select id="formatSelect" aria-label="Target format">
+        <option value="">Keep same format</option>
+        <optgroup label="Images"><option>jpeg</option><option>png</option><option>webp</option><option>avif</option><option>pdf</option></optgroup>
+        <optgroup label="Docs"><option>pdf</option><option>txt</option><option>html</option></optgroup>
+        <optgroup label="Audio"><option>mp3</option><option>wav</option><option>ogg</option></optgroup>
+        <optgroup label="Video"><option>mp4</option><option>webm</option><option>mov</option></optgroup>
+      </select>
 
-    <input id="quality" type="number" min="10" max="100" value="80" title="Quality (10-100)">
+      <input id="quality" type="number" min="10" max="100" value="80" title="Quality (10-100)">
 
-    <button id="runBtn" class="btn-primary">Run</button>
-    <button id="clearBtn" class="btn-ghost">Clear</button>
+      <button id="runBtn" class="primary">Run</button>
+      <button id="clearBtn" class="secondary">Clear</button>
+    </div>
+
+    <div class="progress" id="progress" aria-hidden="true"><div class="bar" id="bar"></div></div>
+
+    <div id="status" class="status" aria-live="polite"></div>
+    <div id="error" class="status error" aria-live="assertive"></div>
+
+    <div id="downloadArea" style="text-align:center;margin-top:10px"></div>
+
+    <footer>© EverToolbox</footer>
   </div>
 
-  <div class="progress" id="progress" aria-hidden="true"><div class="bar" id="bar"></div></div>
-
-  <div id="status" class="status" aria-live="polite"></div>
-  <div id="error" class="status error" aria-live="assertive"></div>
-
-  <div id="downloadArea" style="text-align:center;margin-top:12px;"></div>
-
-  <footer>© Your App — Universal File Tool</footer>
-</div>
-
 <script>
-(function(){
-const API = "https://evertoolbox-backend.onrender.com/api/tools/file";
+(() => {
+  const API = '/api/tools/file';
   const fileInput = document.getElementById('fileInput');
   const dropZone = document.getElementById('dropZone');
   const dropText = document.getElementById('dropText');
@@ -400,157 +403,157 @@ const API = "https://evertoolbox-backend.onrender.com/api/tools/file";
   const qualityInput = document.getElementById('quality');
   const runBtn = document.getElementById('runBtn');
   const clearBtn = document.getElementById('clearBtn');
-  const progressWrap = document.getElementById('progress');
+  const progress = document.getElementById('progress');
   const bar = document.getElementById('bar');
   const status = document.getElementById('status');
-  const error = document.getElementById('error');
+  const errorEl = document.getElementById('error');
   const downloadArea = document.getElementById('downloadArea');
 
   let selectedFile = null;
   let activeXhr = null;
 
-  // single-click: using native label[for=fileInput] avoids JS double-click issues
-  // we still wire drag/drop behavior for UX
-  dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag'); });
-  dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('drag'); });
-  dropZone.addEventListener('drop', (e) => {
+  // Drag UX
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag'));
+  dropZone.addEventListener('drop', e => {
     e.preventDefault(); dropZone.classList.remove('drag');
-    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
-      setFile(e.dataTransfer.files[0]);
-    }
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
   });
 
-  fileInput.addEventListener('change', (e) => {
-    if (e.target.files && e.target.files[0]) setFile(e.target.files[0]);
-  });
+  fileInput.addEventListener('change', e => { if (e.target.files && e.target.files[0]) setFile(e.target.files[0]); });
 
   function setFile(f) {
     selectedFile = f;
     dropText.textContent = `${f.name} — ${Math.round(f.size/1024)} KB`;
-    clearMessages();
-  }
-
-  function clearMessages() {
     status.textContent = '';
-    error.textContent = '';
+    errorEl.textContent = '';
     downloadArea.innerHTML = '';
   }
 
-  runBtn.addEventListener('click', () => {
-    clearMessages();
-    if (!selectedFile) { error.textContent = 'Please select a file first.'; return; }
-    const action = actionSelect.value;
-    const targetFormat = formatSelect.value.trim();
-    const quality = Math.max(10, Math.min(100, parseInt(qualityInput.value) || 80));
+  // Freeze format on compress
+  actionSelect.addEventListener('change', () => {
+    if (actionSelect.value === 'compress') {
+      formatSelect.disabled = true;
+    } else {
+      formatSelect.disabled = false;
+    }
+  });
 
-    if (action === 'convert' && !targetFormat) { error.textContent = 'Please select a target format.'; return; }
-    if (action === 'convert' && targetFormat && selectedFile.name.toLowerCase().endsWith('.' + targetFormat.toLowerCase())) {
-      const ok = confirm('You selected the same format as the input. Continue?');
+  runBtn.addEventListener('click', () => {
+    // disable UI while running
+    errorEl.textContent = '';
+    status.textContent = '';
+
+    if (!selectedFile) { errorEl.textContent = 'Please select a file first.'; return; }
+    const action = actionSelect.value;
+    const target = formatSelect.value.trim();
+    const quality = Math.max(10, Math.min(100, parseInt(qualityInput.value) || 80));
+    if (action === 'convert' && !target) { errorEl.textContent = 'Please choose a target format for conversion.'; return; }
+    if (action === 'convert' && target && selectedFile.name.toLowerCase().endsWith('.' + target.toLowerCase())) {
+      const ok = confirm('Target is the same as source. Continue?');
       if (!ok) return;
     }
-    if (action === 'compress') {
-      // freeze target to original extension client-side
-      formatSelect.value = '';
-    }
 
-    // prepare request
+    // freeze UI
+    runBtn.disabled = true;
+    clearBtn.disabled = true;
+    progress.style.display = 'block';
+    bar.style.width = '0%';
+    status.className = 'status';
+    status.textContent = 'Processing — this may take a moment for large files...';
+    downloadArea.innerHTML = '';
+
     const fd = new FormData();
     fd.append('file', selectedFile);
     fd.append('action', action);
-    fd.append('targetFormat', targetFormat);
+    fd.append('targetFormat', target);
     fd.append('quality', quality);
 
     const xhr = new XMLHttpRequest();
     activeXhr = xhr;
     xhr.open('POST', API + '/process', true);
     xhr.responseType = 'blob';
+    xhr.timeout = 60 * 60 * 1000; // 1 hour client timeout for long uploads
 
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) {
-        progressWrap.style.display = 'block';
         const pct = Math.round(e.loaded / e.total * 100);
         bar.style.width = pct + '%';
       }
     };
 
     xhr.onload = () => {
-      progressWrap.style.display = 'none';
+      progress.style.display = 'none';
       bar.style.width = '0%';
+      runBtn.disabled = false;
+      clearBtn.disabled = false;
       activeXhr = null;
 
       if (xhr.status === 200) {
-        // try to get filename from header
+        // success, create download button
+        const blob = xhr.response;
+        // try to parse filename from header
         const cd = xhr.getResponseHeader('Content-Disposition') || '';
         let filename = '';
-        const m = cd.match(/filename="([^"]+)"/);
+        const m = cd.match(/filename="?([^"]+)"?/);
         if (m && m[1]) filename = m[1];
         if (!filename) {
-          // fallback: make name based on input and selected/derived extension
-          const ext = (action === 'compress') ? (selectedFile.name.split('.').pop() || 'bin') : (formatSelect.value || selectedFile.name.split('.').pop());
+          const ext = action === 'compress' ? (selectedFile.name.split('.').pop() || 'bin') : (formatSelect.value || selectedFile.name.split('.').pop() || 'bin');
           filename = selectedFile.name.replace(/\.\w+$/, '') + '.' + ext;
         }
 
-        // create download button (button that triggers anchor click)
-        const blob = xhr.response;
         const url = URL.createObjectURL(blob);
-
-        const dlBtn = document.createElement('button');
-        dlBtn.className = 'download-btn';
-        dlBtn.textContent = '⬇ Download Result';
-        dlBtn.addEventListener('click', () => {
+        const btn = document.createElement('button');
+        btn.className = 'download-btn';
+        btn.textContent = '⬇ Download Result';
+        btn.addEventListener('click', () => {
           const a = document.createElement('a');
           a.href = url;
           a.download = filename;
           document.body.appendChild(a);
-          a.style.display = 'none';
           a.click();
           a.remove();
-          // revoke after a short time
           setTimeout(() => URL.revokeObjectURL(url), 10000);
         });
-
         downloadArea.innerHTML = '';
-        downloadArea.appendChild(dlBtn);
+        downloadArea.appendChild(btn);
         status.className = 'status success';
-        status.textContent = '✅ Process completed successfully.';
+        status.textContent = '✅ Process completed successfully';
       } else {
-        // read JSON error if present
-        try {
-          const reader = new FileReader();
-          reader.onload = () => {
-            try {
-              const parsed = JSON.parse(reader.result);
-              error.textContent = '❌ ' + (parsed.error || 'Processing failed. Try again.');
-            } catch (e) {
-              error.textContent = '❌ Processing failed. Try again.';
-            }
-          };
-          reader.readAsText(xhr.response);
-        } catch (e) {
-          error.textContent = '❌ Processing failed. Try again.';
-        }
+        // try parse JSON error from blob
+        const reader = new FileReader();
+        reader.onload = () => {
+          let text = reader.result || '';
+          try {
+            const parsed = JSON.parse(text);
+            errorEl.textContent = '❌ ' + (parsed.error || 'Processing failed.');
+          } catch (e) {
+            // not JSON -> show plain text
+            errorEl.textContent = '❌ ' + (text || 'Processing failed. Try again.');
+          }
+        };
+        reader.readAsText(xhr.response);
       }
     };
 
     xhr.onerror = () => {
-      progressWrap.style.display = 'none';
+      progress.style.display = 'none';
       bar.style.width = '0%';
+      runBtn.disabled = false;
+      clearBtn.disabled = false;
       activeXhr = null;
-      error.textContent = 'Network error — try a smaller file or check your connection.';
+      errorEl.textContent = 'Network error — try a smaller file or check your connection.';
     };
 
-    // increase timeout client-side in case of long uploads (60 min)
-    xhr.timeout = 60 * 60 * 1000;
     xhr.ontimeout = () => {
+      progress.style.display = 'none';
+      runBtn.disabled = false;
+      clearBtn.disabled = false;
       activeXhr = null;
-      error.textContent = 'Request timed out. Try a smaller file or process server-side.';
-      progressWrap.style.display = 'none';
-      bar.style.width = '0%';
+      errorEl.textContent = 'Upload timed out — try a smaller file or use a background job for large files.';
     };
 
-    // start upload
     xhr.send(fd);
-    status.textContent = 'Processing… this may take a moment for large files';
   });
 
   clearBtn.addEventListener('click', () => {
@@ -559,14 +562,20 @@ const API = "https://evertoolbox-backend.onrender.com/api/tools/file";
     dropText.textContent = 'Click or drop a file here';
     formatSelect.value = '';
     qualityInput.value = '80';
-    clearMessages();
-    progressWrap.style.display = 'none';
+    status.textContent = '';
+    errorEl.textContent = '';
+    downloadArea.innerHTML = '';
+    progress.style.display = 'none';
     bar.style.width = '0%';
-    if (activeXhr) { try { activeXhr.abort(); } catch (e) {} activeXhr = null; }
+    if (activeXhr) {
+      try { activeXhr.abort(); } catch (e) {}
+      activeXhr = null;
+    }
   });
 
 })();
 </script>
 </body>
-</html>
-
+  </html>
+        
+  
