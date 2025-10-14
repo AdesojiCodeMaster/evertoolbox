@@ -317,114 +317,128 @@ input[type="text"]:focus {
 
 
 
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Universal File Tool</title>
 <style>
   body {
-    font-family: "Segoe UI", sans-serif;
-    background: #fff;
-    color: #333;
+    font-family: 'Segoe UI', sans-serif;
+    background: #ffffff;
+    color: #222;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 40px;
+    padding: 30px;
   }
-  .container {
-    max-width: 600px;
-    width: 100%;
-    background: #f9f9f9;
+  h1 { font-size: 1.8em; margin-bottom: 15px; }
+  .tool-box {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
     padding: 25px;
-    border-radius: 15px;
-    box-shadow: 0 0 12px rgba(0,0,0,0.1);
+    width: 90%;
+    max-width: 600px;
+  }
+  input, select, button {
+    width: 100%;
+    padding: 10px;
+    margin: 6px 0;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 1em;
   }
   button {
     background: #007bff;
-    border: none;
     color: white;
-    padding: 12px 20px;
-    border-radius: 8px;
+    border: none;
     cursor: pointer;
-    margin-top: 10px;
+    transition: 0.2s;
   }
   button:hover { background: #0056b3; }
-  input, select {
-    width: 100%;
+  .msg {
+    margin-top: 15px;
+    font-weight: bold;
+    text-align: center;
+  }
+  .download-btn {
+    display: inline-block;
     margin-top: 10px;
-    padding: 10px;
-    border-radius: 6px;
-    border: 1px solid #ccc;
+    background: #28a745;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-decoration: none;
   }
-  .result {
-    margin-top: 20px;
-    padding: 10px;
-    background: #eef;
-    border-radius: 6px;
-    display: none;
-  }
+  .download-btn:hover { background: #1e7e34; }
 </style>
 </head>
 <body>
-  <div class="container">
-    <h2>Universal File Tool</h2>
-    <input type="file" id="fileInput" />
+  <h1>Universal File Conversion & Compression Tool</h1>
+  <div class="tool-box">
+    <input type="file" id="file" required>
     <select id="action">
-      <option value="">Select Action</option>
+      <option value="">-- Select Action --</option>
       <option value="convert">Convert</option>
       <option value="compress">Compress</option>
     </select>
     <select id="format">
-      <option value="">Select Format (for conversion)</option>
-      <option>pdf</option><option>jpg</option><option>png</option>
-      <option>docx</option><option>html</option>
-      <option>mp3</option><option>wav</option><option>ogg</option>
-      <option>mp4</option><option>mov</option><option>webm</option>
+      <option value="">-- Target Format --</option>
+      <option value="pdf">PDF</option>
+      <option value="png">PNG</option>
+      <option value="jpg">JPG</option>
+      <option value="jpeg">JPEG</option>
+      <option value="webp">WEBP</option>
+      <option value="mp3">MP3</option>
+      <option value="wav">WAV</option>
+      <option value="ogg">OGG</option>
+      <option value="mp4">MP4</option>
+      <option value="mov">MOV</option>
+      <option value="webm">WEBM</option>
+      <option value="txt">TXT</option>
+      <option value="html">HTML</option>
+      <option value="docx">DOCX</option>
     </select>
-    <button id="processBtn">Start</button>
-    <div class="result" id="resultBox"></div>
+    <button id="processBtn">Start Processing</button>
+    <div class="msg" id="msg"></div>
   </div>
 
 <script>
-//const API = '/api/tools/file';
-  const API = 'https://your-app.onrender.com/api/tools/file';
-  document.getElementById('processBtn').onclick = async () => {
-  const file = document.getElementById('fileInput').files[0];
-  const action = document.getElementById('action').value;
-  const format = document.getElementById('format').value;
-  const resultBox = document.getElementById('resultBox');
+  const API = "https://evertoolbox-backend.onrender.com/api/tools/file";
+document.getElementById("processBtn").onclick = async () => {
+  const file = document.getElementById("file").files[0];
+  const action = document.getElementById("action").value;
+  const format = document.getElementById("format").value;
+  const msg = document.getElementById("msg");
+  msg.innerHTML = "";
 
-  if (!file) return alert('Please select a file.');
-  if (!action) return alert('Please select an action.');
-  if (action === 'convert' && !format) return alert('Please select a format.');
+  if (!file) return msg.innerHTML = "Please upload a file.";
+  if (!action) return msg.innerHTML = "Please select an action.";
+  if (action === "convert" && !format) return msg.innerHTML = "Please select a target format.";
+  if (action === "compress") document.getElementById("format").value = "";
 
-  const fd = new FormData();
-  fd.append('file', file);
-  fd.append('action', action);
-  fd.append('format', format);
+  msg.innerHTML = "⏳ Processing — this may take a moment...";
 
-  resultBox.style.display = 'block';
-  resultBox.innerText = 'Processing... please wait.';
+  const form = new FormData();
+  form.append("file", file);
+  form.append("action", action);
+  form.append("targetFormat", format);
 
   try {
-    const res = await fetch(`${API}/process`, { method: 'POST', body: fd });
+    const res = await fetch("/api/tools/file/process", { method: "POST", body: form });
     const data = await res.json();
-    if (!data.success) return (resultBox.innerText = '❌ ' + data.message);
 
-    resultBox.innerHTML = `✅ ${data.message}<br>
-    <a href="${data.downloadUrl}" target="_blank">
-      <button>Download File</button>
-    </a>`;
+    if (!data.success) throw new Error(data.message);
+
+    msg.innerHTML = `✅ ${data.message}<br>
+      <a class="download-btn" href="${data.download}" target="_blank">⬇️ Download File</a>`;
   } catch (err) {
-    resultBox.innerText = '❌ Processing failed. Try again.';
+    msg.innerHTML = "❌ " + err.message;
   }
 };
 </script>
 </body>
 </html>
-  
   
