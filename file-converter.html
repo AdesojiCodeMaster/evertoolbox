@@ -317,128 +317,200 @@ input[type="text"]:focus {
 
 
 
-<!DOCTYPE html>
+
+
+
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Universal File Tool</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>EverToolbox — File Converter & Compressor</title>
 <style>
-  body {
-    font-family: 'Segoe UI', sans-serif;
-    background: #ffffff;
-    color: #222;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 30px;
-  }
-  h1 { font-size: 1.8em; margin-bottom: 15px; }
-  .tool-box {
-    background: #fff;
-    border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    padding: 25px;
-    width: 90%;
-    max-width: 600px;
-  }
-  input, select, button {
-    width: 100%;
-    padding: 10px;
-    margin: 6px 0;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-    font-size: 1em;
-  }
-  button {
-    background: #007bff;
-    color: white;
-    border: none;
-    cursor: pointer;
-    transition: 0.2s;
-  }
-  button:hover { background: #0056b3; }
-  .msg {
-    margin-top: 15px;
-    font-weight: bold;
-    text-align: center;
-  }
-  .download-btn {
-    display: inline-block;
-    margin-top: 10px;
-    background: #28a745;
-    color: white;
-    padding: 10px 20px;
-    border-radius: 8px;
-    text-decoration: none;
-  }
-  .download-btn:hover { background: #1e7e34; }
+:root {
+  --bg:linear-gradient(135deg,#eef4ff,#f8fbff);
+  --card:rgba(255,255,255,0.8);
+  --accent:#007aff;
+  --accent2:#10b981;
+  --muted:#6b7280;
+}
+body {
+  font-family:Inter,system-ui,sans-serif;
+  background:var(--bg);
+  margin:0;
+  padding:0;
+}
+.container {
+  max-width:880px;
+  margin:40px auto;
+  background:var(--card);
+  border-radius:18px;
+  padding:28px;
+  box-shadow:0 8px 32px rgba(0,0,0,.08);
+  backdrop-filter:blur(10px);
+}
+h1 { color:var(--accent); margin-bottom:8px; text-align:center;}
+.sub { color:var(--muted); margin-bottom:20px; text-align:center;}
+.drop {
+  border:2px dashed #c8d8ff;
+  border-radius:12px;
+  padding:26px;
+  text-align:center;
+  cursor:pointer;
+  background:#f9fbff;
+  transition:.3s;
+}
+.drop.drag { background:#eaf3ff; }
+input[type=file]{ display:none; }
+button {
+  border:none;
+  border-radius:10px;
+  padding:10px 18px;
+  cursor:pointer;
+  font-weight:600;
+  transition:background .3s,transform .2s;
+}
+button:hover{transform:translateY(-2px);}
+.btn-main{background:var(--accent);color:#fff;}
+.btn-secondary{background:#475569;color:#fff;}
+.preview{
+  margin-top:16px;
+  border-radius:10px;
+  padding:12px;
+  background:#fafafa;
+  text-align:center;
+  transition:.3s;
+}
+.preview img,video,audio{border-radius:10px;max-width:100%;}
+.progress{height:8px;background:#e8eef8;border-radius:8px;overflow:hidden;display:none;margin-top:12px;}
+.bar{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .3s;}
+.msg,.error{margin-top:14px;font-weight:500;text-align:center;}
+.msg{color:var(--accent);}
+.error{color:#d33;}
+footer{text-align:center;margin-top:30px;color:var(--muted);font-size:.9rem;}
 </style>
 </head>
 <body>
-  <h1>Universal File Conversion & Compression Tool</h1>
-  <div class="tool-box">
-    <input type="file" id="file" required>
-    <select id="action">
-      <option value="">-- Select Action --</option>
+<div class="container">
+  <h1>File Converter + Compressor</h1>
+  <div class="sub">Convert or compress any file — image, document, audio, or video — fast & secure.</div>
+
+  <label id="dropZone" class="drop">
+    <div id="dropText">Click or drop a file here</div>
+    <input id="fileInput" type="file" accept="*/*"/>
+  </label>
+
+  <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:center;">
+    <select id="targetFormat">
+      <option value="">— keep same format —</option>
+      <optgroup label="Images"><option>jpeg</option><option>png</option><option>webp</option><option>avif</option><option>pdf</option></optgroup>
+      <optgroup label="Docs"><option>pdf</option><option>txt</option><option>docx</option><option>html</option></optgroup>
+      <optgroup label="Audio"><option>mp3</option><option>wav</option><option>ogg</option></optgroup>
+      <optgroup label="Video"><option>mp4</option><option>webm</option><option>mov</option></optgroup>
+    </select>
+    <select id="actionSelect">
       <option value="convert">Convert</option>
       <option value="compress">Compress</option>
     </select>
-    <select id="format">
-      <option value="">-- Target Format --</option>
-      <option value="pdf">PDF</option>
-      <option value="png">PNG</option>
-      <option value="jpg">JPG</option>
-      <option value="jpeg">JPEG</option>
-      <option value="webp">WEBP</option>
-      <option value="mp3">MP3</option>
-      <option value="wav">WAV</option>
-      <option value="ogg">OGG</option>
-      <option value="mp4">MP4</option>
-      <option value="mov">MOV</option>
-      <option value="webm">WEBM</option>
-      <option value="txt">TXT</option>
-      <option value="html">HTML</option>
-      <option value="docx">DOCX</option>
-    </select>
-    <button id="processBtn">Start Processing</button>
-    <div class="msg" id="msg"></div>
+    <input id="quality" type="number" value="80" min="10" max="100" style="width:80px">
+    <button class="btn-main" id="runBtn">Run</button>
+    <button class="btn-secondary" id="clearBtn">Clear</button>
   </div>
 
+  <div class="progress"><div class="bar"></div></div>
+  <div class="preview" id="preview" style="display:none;"></div>
+  <div class="msg" id="msg"></div>
+  <div class="error" id="err"></div>
+
+  <footer>© EverToolbox — Smart File Tools</footer>
+</div>
+
 <script>
-  const API = "https://evertoolbox-backend.onrender.com/api/tools/file";
-document.getElementById("processBtn").onclick = async () => {
-  const file = document.getElementById("file").files[0];
-  const action = document.getElementById("action").value;
-  const format = document.getElementById("format").value;
-  const msg = document.getElementById("msg");
-  msg.innerHTML = "";
+const API = "https://evertoolbox-backend.onrender.com/api/tools/file";
+const drop = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const preview = document.getElementById('preview');
+const msg = document.getElementById('msg');
+const err = document.getElementById('err');
+const bar = document.querySelector('.bar');
+const progress = document.querySelector('.progress');
+const formatSelect = document.getElementById('targetFormat');
+const actionSelect = document.getElementById('actionSelect');
+let file = null;
 
-  if (!file) return msg.innerHTML = "Please upload a file.";
-  if (!action) return msg.innerHTML = "Please select an action.";
-  if (action === "convert" && !format) return msg.innerHTML = "Please select a target format.";
-  if (action === "compress") document.getElementById("format").value = "";
+// One-click upload fix
+drop.addEventListener('click', ()=> fileInput.click());
+fileInput.addEventListener('change', e=> handleFile(e.target.files[0]));
+drop.addEventListener('dragover', e=>{e.preventDefault();drop.classList.add('drag');});
+drop.addEventListener('dragleave', ()=> drop.classList.remove('drag'));
+drop.addEventListener('drop', e=>{
+  e.preventDefault(); drop.classList.remove('drag');
+  handleFile(e.dataTransfer.files[0]);
+});
 
-  msg.innerHTML = "⏳ Processing — this may take a moment...";
+function handleFile(f){
+  if(!f) return;
+  file=f;
+  drop.querySelector('#dropText').textContent=f.name;
+  preview.style.display='block';
+  if(f.type.startsWith('image/'))
+    preview.innerHTML=`<img src="${URL.createObjectURL(f)}">`;
+  else if(f.type.startsWith('audio/'))
+    preview.innerHTML=`<audio controls src="${URL.createObjectURL(f)}" style="width:100%"></audio>`;
+  else if(f.type.startsWith('video/'))
+    preview.innerHTML=`<video controls src="${URL.createObjectURL(f)}" style="width:100%"></video>`;
+  else
+    preview.textContent=`Selected: ${f.name} (${Math.round(f.size/1024)} KB)`;
+}
 
-  const form = new FormData();
-  form.append("file", file);
-  form.append("action", action);
-  form.append("targetFormat", format);
+document.getElementById('runBtn').onclick = async ()=>{
+  if(!file){err.textContent="Please select a file first.";return;}
+  if(actionSelect.value==='convert' && !formatSelect.value){err.textContent="Please select a target format.";return;}
+  if(actionSelect.value==='convert' && file.name.toLowerCase().endsWith('.'+formatSelect.value.toLowerCase())){err.textContent="File already in that format.";return;}
+  if(actionSelect.value==='compress'){formatSelect.value='';}
+  err.textContent=''; msg.textContent='Processing...';
+  const form=new FormData();
+  form.append('file',file);
+  form.append('action',actionSelect.value);
+  form.append('targetFormat',formatSelect.value);
+  form.append('quality',document.getElementById('quality').value);
+  const xhr=new XMLHttpRequest();
+  xhr.open('POST',API+'/process',true);
+  xhr.responseType='blob';
+  xhr.upload.onprogress=e=>{
+    if(e.lengthComputable){
+      progress.style.display='block';
+      bar.style.width=(e.loaded/e.total*100)+'%';
+    }
+  };
+  xhr.onload=()=>{
+    progress.style.display='none';
+    if(xhr.status==200){
+      const url=URL.createObjectURL(xhr.response);
+      msg.innerHTML=`
+        <div style="margin-top:12px;">
+          <button class="btn-main" onclick="window.open('${url}','_blank')" download>
+            ⬇ Download File
+          </button>
+          <div>✅ Completed successfully.</div>
+        </div>`;
+    } else {
+      err.textContent='❌ '+(xhr.response?.error || 'Failed. Try smaller file or check format.');
+    }
+  };
+  xhr.onerror=()=>{err.textContent='Network error';progress.style.display='none';};
+  xhr.send(form);
+};
 
-  try {
-    const res = await fetch("/api/tools/file/process", { method: "POST", body: form });
-    const data = await res.json();
-
-    if (!data.success) throw new Error(data.message);
-
-    msg.innerHTML = `✅ ${data.message}<br>
-      <a class="download-btn" href="${data.download}" target="_blank">⬇️ Download File</a>`;
-  } catch (err) {
-    msg.innerHTML = "❌ " + err.message;
-  }
+document.getElementById('clearBtn').onclick=()=>{
+  file=null;fileInput.value='';
+  drop.querySelector('#dropText').textContent='Click or drop a file here';
+  preview.style.display='none';msg.textContent='';err.textContent='';
+  bar.style.width='0%';progress.style.display='none';
 };
 </script>
 </body>
 </html>
+  
+
   
