@@ -462,9 +462,10 @@ input[type="text"]:focus {
   </div>
 
   <script>
-    const API_URL = "https://evertoolbox-backend.onrender.com/api/tools/file";
-
-    async function previewFile(input, container) {
+    //const API_URL = "https://evertoolbox-backend.onrender.com/api/tools/file";
+   const API_URL = "https://evertoolbox-backend.onrender.com/file";
+   
+      async function previewFile(input, container) {
       container.innerHTML = "";
       const file = input.files[0];
       if (!file) return;
