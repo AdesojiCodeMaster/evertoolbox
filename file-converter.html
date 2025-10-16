@@ -333,7 +333,7 @@ input[type="text"]:focus {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Universal File Tool</title>
+  <title>Universal File Processor</title>
   <style>
     body {
       font-family: "Inter", sans-serif;
@@ -422,16 +422,6 @@ input[type="text"]:focus {
 
     <select id="format">
       <option value="">Select target format</option>
-      <option value="png">PNG</option>
-      <option value="jpg">JPG</option>
-      <option value="jpeg">JPEG</option>
-      <option value="gif">GIF</option>
-      <option value="webp">WEBP</option>
-      <option value="pdf">PDF</option>
-      <option value="mp3">MP3</option>
-      <option value="mp4">MP4</option>
-      <option value="txt">TXT</option>
-      <option value="html">HTML</option>
     </select>
 
     <div id="qualityControl" style="display:none;">
@@ -457,6 +447,7 @@ input[type="text"]:focus {
 
     let file = null;
     let originalExt = "";
+    let fileType = "";
 
     // 📁 Handle file selection
     drop.addEventListener("click", () => input.click());
@@ -476,33 +467,58 @@ input[type="text"]:focus {
       if (!f) return;
       file = f;
       originalExt = f.name.split(".").pop().toLowerCase();
+      fileType = f.type;
       drop.querySelector("#dropText").textContent = f.name;
       preview.style.display = "block";
 
       const fileURL = URL.createObjectURL(f);
-      const type = f.type;
-
-      if (type.startsWith("image/")) {
+      if (fileType.startsWith("image/")) {
         preview.innerHTML = `<img src="${fileURL}" style="max-width:100%;border-radius:10px;">`;
-      } else if (type.startsWith("audio/")) {
+      } else if (fileType.startsWith("audio/")) {
         preview.innerHTML = `<audio controls src="${fileURL}" style="width:100%"></audio>`;
-      } else if (type.startsWith("video/")) {
+      } else if (fileType.startsWith("video/")) {
         preview.innerHTML = `<video controls src="${fileURL}" style="width:100%;border-radius:10px;"></video>`;
-      } else if (type === "application/pdf") {
-        preview.innerHTML = `
-          <iframe src="${fileURL}" type="application/pdf" 
-                  style="width:100%;height:450px;border:none;border-radius:10px;">
-          </iframe>`;
+      } else if (fileType === "application/pdf") {
+        preview.innerHTML = `<iframe src="${fileURL}" type="application/pdf" 
+                style="width:100%;height:450px;border:none;border-radius:10px;background:#fff;"></iframe>`;
       } else {
         preview.innerHTML = `<div>Selected: ${f.name}</div>`;
       }
+
+      populateFormats(fileType);
     }
 
-    // 🎚️ Show/hide quality control
+    // 🧠 Dynamically adjust available formats
+    function populateFormats(type) {
+      const groups = {
+        image: ["png", "jpg", "jpeg", "gif", "webp", "pdf"],
+        document: ["pdf", "txt", "html", "png", "jpg"],
+        audio: ["mp3", "wav", "ogg"],
+        video: ["mp4", "mov", "avi", "webm"]
+      };
+
+      let options = `<option value="">Select target format</option>`;
+
+      if (type.startsWith("image/")) {
+        options += `<optgroup label="📷 Images">` + groups.image.map(f => `<option value="${f}">${f.toUpperCase()}</option>`).join("") + `</optgroup>`;
+      } else if (type.startsWith("video/")) {
+        options += `<optgroup label="🎬 Video">` + groups.video.map(f => `<option value="${f}">${f.toUpperCase()}</option>`).join("") + `</optgroup>`;
+      } else if (type.startsWith("audio/")) {
+        options += `<optgroup label="🎵 Audio">` + groups.audio.map(f => `<option value="${f}">${f.toUpperCase()}</option>`).join("") + `</optgroup>`;
+      } else if (type === "application/pdf" || type.includes("text") || type.includes("html")) {
+        options += `<optgroup label="📄 Documents">` + groups.document.map(f => `<option value="${f}">${f.toUpperCase()}</option>`).join("") + `</optgroup>`;
+      } else {
+        options += `<option value="">Generic conversion</option>`;
+      }
+
+      format.innerHTML = options;
+    }
+
+    // 🎚️ Quality Control Visibility
     action.addEventListener("change", () => {
       if (action.value === "compress") {
         qualityControl.style.display = "block";
-        format.disabled = true; // freeze format
+        format.disabled = true;
         format.style.opacity = 0.5;
       } else {
         qualityControl.style.display = "none";
@@ -511,22 +527,19 @@ input[type="text"]:focus {
       }
     });
 
-    quality.addEventListener("input", () => {
-      qValue.textContent = quality.value;
-    });
+    quality.addEventListener("input", () => (qValue.textContent = quality.value));
 
-    // 🚀 Handle processing
+    // 🚀 Process
     processBtn.addEventListener("click", async () => {
       if (!file) return alert("Please upload a file first!");
 
       const act = action.value;
       const fmt = format.value;
 
-      // 🧩 Validation
       if (act === "convert") {
         if (!fmt) return alert("Please select a target format!");
         if (fmt === originalExt)
-          return alert("⚠️ The input and output format are the same. Please choose a different format.");
+          return alert("⚠️ Input and output formats are identical. Please choose a different format.");
       }
 
       const formData = new FormData();
@@ -556,5 +569,4 @@ input[type="text"]:focus {
     });
   </script>
 </body>
- </html>
-       
+</html>
