@@ -328,93 +328,96 @@ input[type="text"]:focus {
 
 
 
- <!DOCTYPE html>
+
+
+
+
+
+ 
+ <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Universal File Processor</title>
-  <style>
-    body {
-      font-family: "Inter", sans-serif;
-      background: #f4f6f8;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-    .container {
-      background: #fff;
-      padding: 30px;
-      border-radius: 16px;
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-      width: 100%;
-      max-width: 480px;
-    }
-    h2 {
-      text-align: center;
-      color: #111;
-      margin-bottom: 20px;
-    }
-    .drop-zone {
-      border: 2px dashed #bbb;
-      border-radius: 12px;
-      padding: 30px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.25s ease;
-      color: #555;
-    }
-    .drop-zone.dragover {
-      background: #e6f0ff;
-      border-color: #007bff;
-      color: #007bff;
-    }
-    #preview {
-      margin-top: 15px;
-      text-align: center;
-      display: none;
-    }
-    select, button, input[type="range"] {
-      width: 100%;
-      padding: 10px;
-      border-radius: 10px;
-      border: 1px solid #ddd;
-      margin-top: 10px;
-      font-size: 15px;
-      outline: none;
-    }
-    button {
-      background: #007bff;
-      color: #fff;
-      border: none;
-      cursor: pointer;
-      font-weight: 600;
-      transition: all 0.25s ease;
-    }
-    button:hover {
-      background: #0056d2;
-    }
-    #message {
-      margin-top: 10px;
-      font-size: 14px;
-      text-align: center;
-      color: #444;
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>EverToolbox — File Converter & Compressor</title>
+<style>
+:root {
+  --bg:#f7faff; --card:#fff; --accent:#007aff;
+  --accent2:#10b981; --muted:#6b7280;
+}
+body {
+  font-family:Inter,system-ui,sans-serif;
+  background:var(--bg); color:#111;
+  margin:0; padding:0;
+}
+.container {
+  max-width:900px; margin:40px auto;
+  background:var(--card); border-radius:16px;
+  padding:30px; box-shadow:0 4px 20px rgba(0,0,0,.07);
+}
+h1 { color:var(--accent); margin-bottom:8px; text-align:center; }
+.sub { color:var(--muted); margin-bottom:20px; text-align:center; }
+
+.drop {
+  border:2px dashed #c8d8ff; border-radius:12px;
+  padding:28px; text-align:center; cursor:pointer;
+  transition:0.3s; background:#f9fbff;
+}
+.drop.dragover { background:#eaf3ff; }
+input[type=file] { display:none; }
+
+select, input[type=number] {
+  padding:8px 12px; border-radius:10px; border:1px solid #ccc;
+  font-size:1rem; outline:none; transition:0.2s;
+}
+select:disabled { background:#eee; color:#888; }
+
+button {
+  border:none; border-radius:10px; padding:10px 18px;
+  cursor:pointer; font-weight:600; transition:.25s;
+}
+button:hover { opacity:.9; }
+.btn-main { background:var(--accent); color:#fff; }
+.btn-secondary { background:#475569; color:#fff; }
+
+.preview {
+  margin-top:16px; border-radius:10px;
+  padding:12px; background:#fafafa;
+}
+.progress {
+  height:8px; background:#e8eef8; border-radius:8px;
+  overflow:hidden; display:none; margin-top:12px;
+}
+.bar {
+  height:100%; width:0%;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));
+  transition:width 0.3s;
+}
+.msg { margin-top:16px; text-align:center; font-weight:500; color:var(--accent); }
+.error { margin-top:12px; color:#d33; text-align:center; font-weight:500; }
+
+footer {
+  text-align:center; margin-top:30px;
+  color:var(--muted); font-size:0.9rem;
+}
+
+@media (max-width:768px) {
+  .container { margin:20px; padding:20px; }
+  select, input[type=number], button { width:100%; margin-top:10px; }
+}
+</style>
 </head>
 <body>
-  <div class="container">
-    <h2>Universal File Processor</h2>
+<div class="container">
+  <h1>File Converter + Compressor</h1>
+  <div class="sub">Convert or compress any file: image, document, audio, or video — fast, simple & secure.</div>
 
-    <div class="drop-zone" id="drop">
-      <p id="dropText">📁 Click or drag & drop your file here</p>
-      <input type="file" id="fileInput" hidden />
-    </div>
+  <label id="drop" class="drop">
+    <div id="dropText">Click or drop a file here</div>
+    <input id="fileInput" type="file" accept="*/*" />
+  </label>
 
-    <div id="preview"></div>
-
+  <div style="margin-top:16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:center;">
     <select id="action">
       <option value="convert">Convert</option>
       <option value="compress">Compress</option>
@@ -422,151 +425,163 @@ input[type="text"]:focus {
 
     <select id="format">
       <option value="">Select target format</option>
+      <optgroup label="Images">
+        <option>jpeg</option><option>png</option><option>webp</option><option>bmp</option><option>tiff</option>
+      </optgroup>
+      <optgroup label="Docs">
+        <option>pdf</option><option>txt</option><option>docx</option><option>html</option>
+      </optgroup>
+      <optgroup label="Audio">
+        <option>mp3</option><option>wav</option><option>ogg</option><option>m4a</option>
+      </optgroup>
+      <optgroup label="Video">
+        <option>mp4</option><option>avi</option><option>mov</option><option>webm</option>
+      </optgroup>
     </select>
 
-    <div id="qualityControl" style="display:none;">
-      <label for="quality">Quality: <span id="qValue">80</span>%</label>
-      <input type="range" id="quality" min="10" max="100" value="80" />
-    </div>
+    <input id="quality" type="number" value="80" min="10" max="100" style="width:90px">
 
-    <button id="processBtn">🚀 Process</button>
-    <div id="message"></div>
+    <button class="btn-main" id="processBtn">Run</button>
+    <button class="btn-secondary" id="clearBtn">Clear</button>
   </div>
 
-  <script>
-    const drop = document.getElementById("drop");
-    const input = document.getElementById("fileInput");
-    const preview = document.getElementById("preview");
-    const action = document.getElementById("action");
-    const format = document.getElementById("format");
-    const processBtn = document.getElementById("processBtn");
-    const qualityControl = document.getElementById("qualityControl");
-    const quality = document.getElementById("quality");
-    const qValue = document.getElementById("qValue");
-    const message = document.getElementById("message");
+  <div class="progress"><div class="bar"></div></div>
+  <div class="preview" id="preview" style="display:none;"></div>
+  <div class="msg" id="message"></div>
+  <div class="error" id="error"></div>
 
-    let file = null;
-    let originalExt = "";
-    let fileType = "";
+  <footer>© EverToolbox — Smart File Tools</footer>
+</div>
 
-    // 📁 Handle file selection
-    drop.addEventListener("click", () => input.click());
-    input.addEventListener("change", (e) => handleFile(e.target.files[0]));
-    drop.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      drop.classList.add("dragover");
-    });
-    drop.addEventListener("dragleave", () => drop.classList.remove("dragover"));
-    drop.addEventListener("drop", (e) => {
-      e.preventDefault();
-      drop.classList.remove("dragover");
-      handleFile(e.dataTransfer.files[0]);
-    });
+<script>
+// --- API endpoint (Render backend) ---
+const API = "https://evertoolbox-backend.onrender.com/api/tools/file"; // ✅ Your existing Render backend
 
-    function handleFile(f) {
-      if (!f) return;
-      file = f;
-      originalExt = f.name.split(".").pop().toLowerCase();
-      fileType = f.type;
-      drop.querySelector("#dropText").textContent = f.name;
-      preview.style.display = "block";
+// --- DOM Elements ---
+const drop = document.getElementById("drop");
+const fileInput = document.getElementById("fileInput");
+const preview = document.getElementById("preview");
+const actionSelect = document.getElementById("action");
+const formatSelect = document.getElementById("format");
+const qualityInput = document.getElementById("quality");
+const processBtn = document.getElementById("processBtn");
+const clearBtn = document.getElementById("clearBtn");
+const msg = document.getElementById("message");
+const err = document.getElementById("error");
+const progress = document.querySelector(".progress");
+const bar = document.querySelector(".bar");
 
-      const fileURL = URL.createObjectURL(f);
-      if (fileType.startsWith("image/")) {
-        preview.innerHTML = `<img src="${fileURL}" style="max-width:100%;border-radius:10px;">`;
-      } else if (fileType.startsWith("audio/")) {
-        preview.innerHTML = `<audio controls src="${fileURL}" style="width:100%"></audio>`;
-      } else if (fileType.startsWith("video/")) {
-        preview.innerHTML = `<video controls src="${fileURL}" style="width:100%;border-radius:10px;"></video>`;
-      } else if (fileType === "application/pdf") {
-        preview.innerHTML = `<iframe src="${fileURL}" type="application/pdf" 
-                style="width:100%;height:450px;border:none;border-radius:10px;background:#fff;"></iframe>`;
-      } else {
-        preview.innerHTML = `<div>Selected: ${f.name}</div>`;
-      }
+let file = null;
 
-      populateFormats(fileType);
+// --- One-click upload ---
+drop.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", (e) => handleFile(e.target.files[0]));
+drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("dragover"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("dragover"));
+drop.addEventListener("drop", (e) => {
+  e.preventDefault();
+  drop.classList.remove("dragover");
+  handleFile(e.dataTransfer.files[0]);
+});
+
+// --- Handle File Selection ---
+function handleFile(f) {
+  if (!f) return;
+  file = f;
+  drop.querySelector("#dropText").textContent = f.name;
+  showPreview(f);
+}
+
+// --- Show Preview (PDF, Image, Audio, Video) ---
+function showPreview(f) {
+  const url = URL.createObjectURL(f);
+  preview.style.display = "block";
+  if (f.type.startsWith("image/"))
+    preview.innerHTML = `<img src="${url}" style="max-width:100%;border-radius:10px;">`;
+  else if (f.type.startsWith("audio/"))
+    preview.innerHTML = `<audio controls src="${url}" style="width:100%"></audio>`;
+  else if (f.type.startsWith("video/"))
+    preview.innerHTML = `<video controls src="${url}" style="width:100%;border-radius:10px;"></video>`;
+  else if (f.type === "application/pdf")
+    preview.innerHTML = `<iframe src="${url}" type="application/pdf" style="width:100%;height:480px;border:none;border-radius:10px;"></iframe>`;
+  else
+    preview.innerHTML = `<div>Selected: ${f.name} (${Math.round(f.size / 1024)} KB)</div>`;
+}
+
+// --- Disable target format for compression ---
+actionSelect.addEventListener("change", () => {
+  const isCompress = actionSelect.value === "compress";
+  formatSelect.disabled = isCompress;
+});
+
+// --- Run Processing ---
+processBtn.onclick = async () => {
+  if (!file) { err.textContent = "Please select a file first."; return; }
+  if (actionSelect.value === "convert" && !formatSelect.value) {
+    err.textContent = "Please select a target format."; return;
+  }
+  if (actionSelect.value === "convert" && file.name.toLowerCase().endsWith('.' + formatSelect.value.toLowerCase())) {
+    err.textContent = "Source and target formats cannot be the same."; return;
+  }
+
+  msg.textContent = "⏳ Processing...";
+  err.textContent = "";
+  progress.style.display = "block"; bar.style.width = "0%";
+
+  const form = new FormData();
+  form.append("file", file);
+  form.append("action", actionSelect.value);
+  form.append("targetFormat", formatSelect.value);
+  form.append("quality", qualityInput.value);
+
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", `${API}/process`, true);
+  xhr.responseType = "blob";
+
+  xhr.upload.onprogress = e => {
+    if (e.lengthComputable) bar.style.width = (e.loaded / e.total * 100) + "%";
+  };
+
+  xhr.onload = () => {
+    progress.style.display = "none";
+    if (xhr.status === 200) {
+      const blob = xhr.response;
+      const blobUrl = URL.createObjectURL(blob);
+      const ext = (actionSelect.value === "convert" && formatSelect.value)
+        ? formatSelect.value
+        : file.name.split('.').pop();
+
+      const downloadName = file.name.replace(/\.\w+$/, '') + '.' + ext;
+
+      msg.innerHTML = `
+        <a href="${blobUrl}" download="${downloadName}"
+           class="btn-main" style="text-decoration:none;padding:10px 18px;display:inline-block;margin-top:8px;">⬇ Download File</a>
+        <div style="margin-top:6px;">✅ Completed successfully.</div>
+      `;
+    } else {
+      err.textContent = "❌ Processing failed. Please try again.";
     }
+  };
 
-    // 🧠 Dynamically adjust available formats
-    function populateFormats(type) {
-      const groups = {
-        image: ["png", "jpg", "jpeg", "gif", "webp", "pdf"],
-        document: ["pdf", "txt", "html", "png", "jpg"],
-        audio: ["mp3", "wav", "ogg"],
-        video: ["mp4", "mov", "avi", "webm"]
-      };
+  xhr.onerror = () => {
+    progress.style.display = "none";
+    err.textContent = "Network error. Please check your connection.";
+  };
 
-      let options = `<option value="">Select target format</option>`;
+  xhr.send(form);
+};
 
-      if (type.startsWith("image/")) {
-        options += `<optgroup label="📷 Images">` + groups.image.map(f => `<option value="${f}">${f.toUpperCase()}</option>`).join("") + `</optgroup>`;
-      } else if (type.startsWith("video/")) {
-        options += `<optgroup label="🎬 Video">` + groups.video.map(f => `<option value="${f}">${f.toUpperCase()}</option>`).join("") + `</optgroup>`;
-      } else if (type.startsWith("audio/")) {
-        options += `<optgroup label="🎵 Audio">` + groups.audio.map(f => `<option value="${f}">${f.toUpperCase()}</option>`).join("") + `</optgroup>`;
-      } else if (type === "application/pdf" || type.includes("text") || type.includes("html")) {
-        options += `<optgroup label="📄 Documents">` + groups.document.map(f => `<option value="${f}">${f.toUpperCase()}</option>`).join("") + `</optgroup>`;
-      } else {
-        options += `<option value="">Generic conversion</option>`;
-      }
-
-      format.innerHTML = options;
-    }
-
-    // 🎚️ Quality Control Visibility
-    action.addEventListener("change", () => {
-      if (action.value === "compress") {
-        qualityControl.style.display = "block";
-        format.disabled = true;
-        format.style.opacity = 0.5;
-      } else {
-        qualityControl.style.display = "none";
-        format.disabled = false;
-        format.style.opacity = 1;
-      }
-    });
-
-    quality.addEventListener("input", () => (qValue.textContent = quality.value));
-
-    // 🚀 Process
-    processBtn.addEventListener("click", async () => {
-      if (!file) return alert("Please upload a file first!");
-
-      const act = action.value;
-      const fmt = format.value;
-
-      if (act === "convert") {
-        if (!fmt) return alert("Please select a target format!");
-        if (fmt === originalExt)
-          return alert("⚠️ Input and output formats are identical. Please choose a different format.");
-      }
-
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("action", act);
-      if (act === "convert") formData.append("targetFormat", fmt);
-      if (act === "compress") formData.append("quality", quality.value);
-
-      message.textContent = "⏳ Processing... please wait.";
-
-      try {
-        const res = await fetch("/process", { method: "POST", body: formData });
-        if (!res.ok) throw new Error("Server error during processing.");
-
-        const blob = await res.blob();
-        const downloadURL = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        const newExt = act === "convert" ? fmt : originalExt;
-        a.href = downloadURL;
-        a.download = `${file.name.replace(/\.[^/.]+$/, "")}_${act}ed.${newExt}`;
-        a.click();
-        message.textContent = "✅ Done! Your file has been processed successfully.";
-      } catch (err) {
-        console.error(err);
-        message.textContent = "❌ Processing failed. Please try again.";
-      }
-    });
-  </script>
+// --- Clear Everything ---
+clearBtn.onclick = () => {
+  file = null;
+  fileInput.value = "";
+  drop.querySelector("#dropText").textContent = "Click or drop a file here";
+  preview.style.display = "none";
+  msg.textContent = "";
+  err.textContent = "";
+  bar.style.width = "0%";
+  progress.style.display = "none";
+};
+</script>
 </body>
 </html>
