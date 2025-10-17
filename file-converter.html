@@ -327,8 +327,7 @@ input[type="text"]:focus {
 
 
 
-
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
@@ -424,6 +423,7 @@ input[type="text"]:focus {
 <div id="convert" class="tab-content active">
   <h2>Convert Files</h2>
   <input type="file" id="convertFile" />
+  <div class="preview" id="convertPreview"></div> <!-- Preview after upload -->
   <select id="convertTargetFormat" disabled>
     <option value="">Select target format...</option>
     <optgroup label="Images">
@@ -454,7 +454,6 @@ input[type="text"]:focus {
   <div class="progress-container" id="convertProgress" style="display:none;">
     <div class="progress-bar" id="convertProgressBar"></div>
   </div>
-  <div class="preview" id="convertPreview"></div>
   <button class="download-btn" id="downloadConvert" style="display:none;">Download</button>
   <div class="error" id="convertError"></div>
 </div>
@@ -462,6 +461,7 @@ input[type="text"]:focus {
 <div id="compress" class="tab-content">
   <h2>Compress Files</h2>
   <input type="file" id="compressFile" />
+  <div class="preview" id="compressPreview"></div> <!-- Preview after upload -->
   <select id="compressTargetFormat" disabled>
     <option value="">Select target format...</option>
     <optgroup label="Images">
@@ -486,7 +486,6 @@ input[type="text"]:focus {
   <div class="progress-container" id="compressProgress" style="display:none;">
     <div class="progress-bar" id="compressProgressBar"></div>
   </div>
-  <div class="preview" id="compressPreview"></div>
   <button class="download-btn" id="downloadCompress" style="display:none;">Download</button>
   <div class="error" id="compressError"></div>
 </div>
@@ -523,17 +522,44 @@ function resetUI(isConvert) {
   showError(isConvert ? 'convertError' : 'compressError', '');
 }
 
+// Function to generate preview after upload
+function generatePreview(file, previewContainer) {
+  previewContainer.innerHTML = '';
+  const url = URL.createObjectURL(file);
+  if (file.type.startsWith('image/')) {
+    const img = document.createElement('img');
+    img.src = url;
+    img.style.maxWidth = '100%';
+    previewContainer.appendChild(img);
+  } else if (file.type.startsWith('video/')) {
+    const video = document.createElement('video');
+    video.src = url;
+    video.controls = true;
+    video.style.maxWidth = '100%';
+    previewContainer.appendChild(video);
+  } else if (file.type.startsWith('audio/')) {
+    const audio = document.createElement('audio');
+    audio.src = url;
+    audio.controls = true;
+    previewContainer.appendChild(audio);
+  } else {
+    // For other types, just show filename
+    const span = document.createElement('span');
+    span.innerText = file.name;
+    previewContainer.appendChild(span);
+  }
+}
+
 // Convert Files
 const convertFileInput = document.getElementById('convertFile');
 const convertTargetSelect = document.getElementById('convertTargetFormat');
 const convertBtn = document.getElementById('convertBtn');
 
 convertFileInput.onchange = () => {
-  document.getElementById('convertTargetFormat').disabled = !convertFileInput.files.length;
-  document.getElementById('convertBtn').disabled = true;
-  if (convertFileInput.files.length) {
-    document.getElementById('convertBtn').disabled = false;
-  }
+  // Generate preview
+  generatePreview(convertFileInput.files[0], document.getElementById('convertPreview'));
+  document.getElementById('convertTargetFormat').disabled = false;
+  document.getElementById('convertBtn').disabled = false;
 };
 convertTargetSelect.onchange = () => {
   document.getElementById('convertBtn').disabled = !convertFileInput.files.length || !convertTargetSelect.value;
@@ -606,11 +632,10 @@ const compressTargetSelect = document.getElementById('compressTargetFormat');
 const compressBtn = document.getElementById('compressBtn');
 
 compressFileInput.onchange = () => {
-  document.getElementById('compressTargetFormat').disabled = !compressFileInput.files.length;
-  document.getElementById('compressBtn').disabled = true;
-  if (compressFileInput.files.length) {
-    document.getElementById('compressBtn').disabled = false;
-  }
+  // Generate preview
+  generatePreview(compressFileInput.files[0], document.getElementById('compressPreview'));
+  document.getElementById('compressTargetFormat').disabled = false;
+  document.getElementById('compressBtn').disabled = false;
 };
 compressTargetSelect.onchange = () => {
   document.getElementById('compressBtn').disabled = !compressFileInput.files.length || !compressTargetSelect.value;
