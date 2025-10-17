@@ -318,259 +318,284 @@ input[type="text"]:focus {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- <!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EverToolbox File Converter & Compressor</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <meta charset="utf-8" />
+  <title>Universal File Tool</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
   <style>
-    body {
-      background-color: #ffffff;
-      color: #222;
-      font-family: 'Inter', sans-serif;
-      padding: 2rem;
-    }
-    .nav-tabs .nav-link.active {
-      background-color: #222;
-      color: #fff;
-    }
-    .card {
-      border-radius: 15px;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.1);
-    }
-    .preview img, .preview video, .preview canvas {
-      max-width: 100%;
-      max-height: 200px;
-      border-radius: 10px;
-      margin-top: 10px;
-    }
-    .progress {
-      height: 10px;
-      margin-top: 15px;
-    }
-    .hidden {
-      display: none;
-    }
-    .btn-dark {
-      background-color: #222;
-      border: none;
-    }
+    body { padding: 1.5rem; background: #f8f9fa; }
+    .dropzone { border: 2px dashed #6c757d; padding: 1.5rem; border-radius: .5rem; text-align: center; cursor: pointer; background: white; }
+    .dropzone:hover { border-color: #007bff; background: #e9f3ff; }
+    .preview { max-width: 100%; max-height: 300px; display: block; margin: 0.5rem auto; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2 class="text-center mb-4">EverToolbox File Converter & Compressor</h2>
+    <h2 class="mb-3 text-center">Universal File Tool</h2>
+    <p class="text-muted text-center">Convert or compress images, videos, or audio easily in your browser.</p>
 
-    <ul class="nav nav-tabs mb-3" id="toolTabs">
-      <li class="nav-item">
-        <button class="nav-link active" id="convert-tab" data-bs-toggle="tab" data-bs-target="#convert">Convert Files</button>
-      </li>
-      <li class="nav-item">
-        <button class="nav-link" id="compress-tab" data-bs-toggle="tab" data-bs-target="#compress">Compress Files</button>
-      </li>
+    <ul class="nav nav-tabs" id="mainTabs">
+      <li class="nav-item"><a class="nav-link active" data-action="convert" href="#">Convert</a></li>
+      <li class="nav-item"><a class="nav-link" data-action="compress" href="#">Compress</a></li>
     </ul>
 
-    <div class="tab-content">
-      <!-- Convert Tab -->
-      <div class="tab-pane fade show active" id="convert">
-        <div class="card p-4">
-          <div class="mb-3">
-            <label class="form-label">Select file:</label>
-            <input type="file" id="convertFile" class="form-control" />
+    <div class="card mt-3 p-4 shadow-sm">
+      <div id="controls">
+        <div class="mb-3">
+          <div id="dropzone" class="dropzone">
+            <p id="droptext">Drag & drop a file here or click to choose</p>
+            <input id="fileInput" type="file" class="form-control hidden" />
           </div>
-
-          <div class="mb-3">
-            <label class="form-label">Target format:</label>
-            <select id="targetFormat" class="form-select">
-              <optgroup label="Images">
-                <option>jpg</option>
-                <option>png</option>
-                <option>webp</option>
-                <option>gif</option>
-                <option>bmp</option>
-              </optgroup>
-              <optgroup label="Audio">
-                <option>mp3</option>
-                <option>wav</option>
-                <option>ogg</option>
-                <option>m4a</option>
-                <option>flac</option>
-              </optgroup>
-              <optgroup label="Video">
-                <option>mp4</option>
-                <option>mov</option>
-                <option>mkv</option>
-                <option>avi</option>
-                <option>webm</option>
-              </optgroup>
-              <optgroup label="Documents">
-                <option>pdf</option>
-                <option>txt</option>
-                <option>docx</option>
-                <option>rtf</option>
-                <option>html</option>
-              </optgroup>
-            </select>
-          </div>
-
-          <div class="preview"></div>
-
-          <button id="convertBtn" class="btn btn-dark w-100 mt-3">Run Conversion</button>
-          <div class="progress mt-3">
-            <div class="progress-bar" role="progressbar" style="width: 0%"></div>
-          </div>
-          <p class="mt-3 text-center text-danger" id="convertMsg"></p>
-          <a id="downloadLink" class="btn btn-success hidden w-100 mt-2" download>Download File</a>
         </div>
-      </div>
 
-      <!-- Compress Tab -->
-      <div class="tab-pane fade" id="compress">
-        <div class="card p-4">
-          <div class="mb-3">
-            <label class="form-label">Select file:</label>
-            <input type="file" id="compressFile" class="form-control" />
-          </div>
-          <div class="preview"></div>
-
-          <button id="compressBtn" class="btn btn-dark w-100 mt-3">Run Compression</button>
-          <div class="progress mt-3">
-            <div class="progress-bar" role="progressbar" style="width: 0%"></div>
-          </div>
-          <p class="mt-3 text-center text-danger" id="compressMsg"></p>
-          <a id="downloadCompress" class="btn btn-success hidden w-100 mt-2" download>Download File</a>
+        <div id="previewArea" class="mb-3 hidden">
+          <strong>Preview:</strong>
+          <div id="previewContent"></div>
         </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-md-6">
+            <label class="form-label">Target format (for convert)</label>
+            <input id="targetFormat" class="form-control" placeholder="e.g., jpg, png, mp4, mp3">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Output filename (optional)</label>
+            <input id="outFilename" class="form-control" placeholder="e.g., result.mp4">
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <button id="startBtn" class="btn btn-primary">Start</button>
+          <button id="cancelBtn" class="btn btn-secondary" disabled>Cancel</button>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Upload progress</label>
+          <div class="progress">
+            <div id="uploadProgress" class="progress-bar" role="progressbar" style="width:0%">0%</div>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Processing progress</label>
+          <div class="progress">
+            <div id="procProgress" class="progress-bar bg-info" role="progressbar" style="width:0%">0%</div>
+          </div>
+          <div id="procMessage" class="small text-muted mt-1"></div>
+        </div>
+
+        <div class="mb-3 text-center">
+          <button id="downloadBtn" class="btn btn-success" disabled>Download Result</button>
+        </div>
+
+        <div id="statusBox" class="mt-3"></div>
       </div>
     </div>
+
+    <hr/>
+    <p class="text-muted small text-center">
+      This demo requires <code>universal-filetool.js</code> running on your backend.<br>
+      For audio/video, ensure <strong>ffmpeg</strong> is installed on your server.
+    </p>
   </div>
 
-  <script>
-    const API_URL = "https://evertoolbox-backend.onrender.com/api/tools/file";
-   //const API_URL = "https://evertoolbox-backend.onrender.com/file";
-   
-      async function previewFile(input, container) {
-      container.innerHTML = "";
-      const file = input.files[0];
-      if (!file) return;
-      const ext = file.name.split('.').pop().toLowerCase();
-      if (["jpg", "jpeg", "png", "webp", "gif", "bmp"].includes(ext)) {
-        const img = document.createElement("img");
-        img.src = URL.createObjectURL(file);
-        container.appendChild(img);
-      } else if (["mp4", "webm", "mov"].includes(ext)) {
-        const vid = document.createElement("video");
-        vid.controls = true;
-        vid.src = URL.createObjectURL(file);
-        container.appendChild(vid);
-      } else if (ext === "pdf") {
-        const canvas = document.createElement("canvas");
-        container.appendChild(canvas);
-        const pdf = await pdfjsLib.getDocument(URL.createObjectURL(file)).promise;
-        const page = await pdf.getPage(1);
-        const viewport = page.getViewport({ scale: 0.5 });
-        const context = canvas.getContext("2d");
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-        await page.render({ canvasContext: context, viewport }).promise;
-      } else {
-        container.textContent = "Preview not available for this file type.";
-      }
+<script>
+  // === Universal File Tool Frontend ===
+  //const API_ORIGIN = location.origin; // change if backend hosted elsewhere 
+ const API_URL = "https://evertoolbox-backend.onrender.com/api/tools/file";
+  let currentFile = null;
+  let currentAction = 'convert';
+  let jobId = null;
+  let pollTimer = null;
+
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const previewArea = document.getElementById('previewArea');
+  const previewContent = document.getElementById('previewContent');
+  const startBtn = document.getElementById('startBtn');
+  const cancelBtn = document.getElementById('cancelBtn');
+  const targetFormat = document.getElementById('targetFormat');
+  const outFilename = document.getElementById('outFilename');
+  const uploadProgress = document.getElementById('uploadProgress');
+  const procProgress = document.getElementById('procProgress');
+  const procMessage = document.getElementById('procMessage');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const statusBox = document.getElementById('statusBox');
+  const tabs = document.querySelectorAll('#mainTabs .nav-link');
+
+  tabs.forEach(t => {
+    t.addEventListener('click', e => {
+      e.preventDefault();
+      tabs.forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      currentAction = t.dataset.action;
+      resetUI();
+    });
+  });
+
+  function resetUI() {
+    currentFile = null;
+    jobId = null;
+    previewContent.innerHTML = '';
+    previewArea.classList.add('hidden');
+    uploadProgress.style.width = '0%'; uploadProgress.textContent = '0%';
+    procProgress.style.width = '0%'; procProgress.textContent = '0%';
+    procMessage.textContent = '';
+    downloadBtn.disabled = true;
+    cancelBtn.disabled = true;
+    startBtn.disabled = false;
+    statusBox.innerHTML = '';
+    clearInterval(pollTimer);
+  }
+
+  dropzone.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', e => handleFileSelect(e.target.files[0]));
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('border-primary'); });
+  dropzone.addEventListener('dragleave', e => { e.preventDefault(); dropzone.classList.remove('border-primary'); });
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('border-primary');
+    if (e.dataTransfer.files && e.dataTransfer.files.length) handleFileSelect(e.dataTransfer.files[0]);
+  });
+
+  function handleFileSelect(file) {
+    currentFile = file;
+    previewContent.innerHTML = '';
+    previewArea.classList.remove('hidden');
+
+    if (file.type.startsWith('image/')) {
+      const img = document.createElement('img');
+      img.className = 'preview';
+      img.src = URL.createObjectURL(file);
+      previewContent.appendChild(img);
+    } else if (file.type.startsWith('video/')) {
+      const v = document.createElement('video');
+      v.className = 'preview';
+      v.controls = true;
+      v.src = URL.createObjectURL(file);
+      previewContent.appendChild(v);
+    } else if (file.type.startsWith('audio/')) {
+      const a = document.createElement('audio');
+      a.controls = true;
+      a.src = URL.createObjectURL(file);
+      previewContent.appendChild(a);
+    } else {
+      previewContent.textContent = `Selected file: ${file.name} (${Math.round(file.size/1024)} KB)`;
     }
+  }
 
-    async function uploadFile(action, fileInput, formatSelect, msgElem, progressBar, downloadLink) {
-      const file = fileInput.files[0];
-      msgElem.textContent = "";
-      downloadLink.classList.add("hidden");
-      if (!file) return msgElem.textContent = "Please select a file.";
+  startBtn.addEventListener('click', async () => {
+    if (!currentFile) return alert('Choose a file first');
+    startBtn.disabled = true;
+    cancelBtn.disabled = false;
+    statusBox.innerHTML = '';
+    uploadProgress.style.width = '0%'; uploadProgress.textContent = '0%';
+    procProgress.style.width = '0%'; procProgress.textContent = '0%';
+    procMessage.textContent = 'Uploading...';
 
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("action", action);
+    try {
+      const form = new FormData();
+      form.append('file', currentFile);
+      const params = new URLSearchParams();
+      params.set('action', currentAction);
+      if (targetFormat.value) params.set('targetFormat', targetFormat.value.trim());
+      if (outFilename.value) form.append('outFilename', outFilename.value.trim());
 
-      if (action === "convert") {
-        const targetFormat = formatSelect.value;
-        const sourceExt = file.name.split('.').pop().toLowerCase();
-        if (targetFormat === sourceExt) {
-          msgElem.textContent = "Source and target formats are the same.";
-          return;
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${API_ORIGIN}/api/upload?${params.toString()}`, true);
+
+      xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          uploadProgress.style.width = pct + '%';
+          uploadProgress.textContent = pct + '%';
         }
-        formData.append("targetFormat", targetFormat);
-      }
+      };
 
-      try {
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", API_URL, true);
-        xhr.responseType = "blob";
-        xhr.upload.onprogress = e => {
-          if (e.lengthComputable) {
-            const percent = (e.loaded / e.total) * 100;
-            progressBar.style.width = percent + "%";
-          }
-        };
-        xhr.onload = function() {
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+          startBtn.disabled = false;
+          cancelBtn.disabled = true;
           if (xhr.status === 200) {
-            const blob = xhr.response;
-            const url = URL.createObjectURL(blob);
-            downloadLink.href = url;
-            downloadLink.download = "processed_" + file.name;
-            downloadLink.classList.remove("hidden");
-            msgElem.textContent = "✅ Process complete.";
-          } else if (xhr.status === 404) {
-            msgElem.textContent = "Server error (404): endpoint not found.";
+            const data = JSON.parse(xhr.responseText);
+            jobId = data.jobId;
+            procMessage.textContent = 'Processing...';
+            pollStatus();
+            pollTimer = setInterval(pollStatus, 1000);
           } else {
-            msgElem.textContent = "Processing failed: " + xhr.statusText;
+            let msg = 'Upload failed';
+            try { msg = JSON.parse(xhr.responseText).error || xhr.responseText; } catch(e) {}
+            statusBox.innerHTML = `<div class="alert alert-danger">${msg}</div>`;
+            procMessage.textContent = '';
           }
-          progressBar.style.width = "0%";
-        };
-        xhr.onerror = () => {
-          msgElem.textContent = "Network or server error.";
-          progressBar.style.width = "0%";
-        };
-        xhr.send(formData);
-      } catch (err) {
-        msgElem.textContent = "Error: " + err.message;
-      }
+        }
+      };
+
+      xhr.send(form);
+    } catch (err) {
+      statusBox.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
     }
+  });
 
-    document.getElementById("convertFile").addEventListener("change", e => previewFile(e.target, e.target.closest(".card").querySelector(".preview")));
-    document.getElementById("compressFile").addEventListener("change", e => previewFile(e.target, e.target.closest(".card").querySelector(".preview")));
+  cancelBtn.addEventListener('click', () => {
+    clearInterval(pollTimer);
+    procMessage.textContent = 'Cancelled by user';
+    cancelBtn.disabled = true;
+    startBtn.disabled = false;
+  });
 
-    document.getElementById("convertBtn").addEventListener("click", () => uploadFile(
-      "convert",
-      document.getElementById("convertFile"),
-      document.getElementById("targetFormat"),
-      document.getElementById("convertMsg"),
-      document.querySelector("#convert .progress-bar"),
-      document.getElementById("downloadLink")
-    ));
+  downloadBtn.addEventListener('click', () => {
+    if (!jobId) return;
+    window.open(`${API_ORIGIN}/api/download/${jobId}`, '_blank');
+  });
 
-    document.getElementById("compressBtn").addEventListener("click", () => uploadFile(
-      "compress",
-      document.getElementById("compressFile"),
-      { value: "" },
-      document.getElementById("compressMsg"),
-      document.querySelector("#compress .progress-bar"),
-      document.getElementById("downloadCompress")
-    ));
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  async function pollStatus() {
+    if (!jobId) return;
+    try {
+      const r = await fetch(`${API_ORIGIN}/api/status/${jobId}`);
+      if (r.status === 404) {
+        procMessage.textContent = 'Job not found';
+        clearInterval(pollTimer);
+        return;
+      }
+      const j = await r.json();
+      procMessage.textContent = j.message || '';
+      procProgress.style.width = (j.progress || 0) + '%';
+      procProgress.textContent = (j.progress || 0) + '%';
+      if (j.status === 'done') {
+        clearInterval(pollTimer);
+        downloadBtn.disabled = false;
+        statusBox.innerHTML = `<div class="alert alert-success">✅ Ready! Click “Download Result”.</div>`;
+      } else if (j.status === 'error') {
+        clearInterval(pollTimer);
+        statusBox.innerHTML = `<div class="alert alert-danger">Error: ${j.message}</div>`;
+      }
+    } catch (err) {
+      console.error('Status poll error', err);
+    }
+  }
+
+  resetUI();
+</script>
 </body>
  </html>
-           
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
