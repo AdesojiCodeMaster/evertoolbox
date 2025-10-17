@@ -338,12 +338,17 @@ input[type="text"]:focus {
     .dropzone { border: 2px dashed #6c757d; padding: 1.2rem; border-radius: .5rem; text-align: center; cursor: pointer; }
     .preview { max-width: 100%; max-height: 300px; display: block; margin: 0.5rem auto; }
     .hidden { display: none; }
+    .pdf-preview {
+      display: flex; align-items: center; justify-content: center;
+      border: 1px solid #ddd; border-radius: .4rem; padding: 1rem;
+      background: #f8f9fa; color: #495057; font-weight: 500;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h2>Universal File Tool</h2>
-    <p class="text-muted">Convert or compress files (images, audio, video, documents, PDF). Upload one file, wait for processing, then download the result.</p>
+    <p class="text-muted">Convert or compress files (images, audio, video, documents, PDFs). Upload one file, process it, and download instantly.</p>
 
     <ul class="nav nav-tabs" id="mainTabs">
       <li class="nav-item"><a class="nav-link active" data-action="convert" href="#">Convert Files</a></li>
@@ -430,7 +435,7 @@ input[type="text"]:focus {
     </div>
 
     <hr/>
-    <p class="text-muted small">Note: Only one file can be uploaded at a time. High-quality compression is used by default. Conversion and compression require ffmpeg and sharp on the server.</p>
+    <p class="text-muted small">High-quality compression by default. Only one file per upload. For best results, keep file size under 100 MB.</p>
   </div>
 
 <script>
@@ -438,8 +443,6 @@ input[type="text"]:focus {
 
   let currentFile = null;
   let currentAction = 'convert';
-  let jobId = null;
-  let pollTimer = null;
   const dropzone = document.getElementById('dropzone');
   const fileInput = document.getElementById('fileInput');
   const previewArea = document.getElementById('previewArea');
@@ -469,7 +472,6 @@ input[type="text"]:focus {
 
   function resetUI() {
     currentFile = null;
-    jobId = null;
     previewContent.innerHTML = '';
     previewArea.classList.add('hidden');
     uploadProgress.style.width = '0%'; uploadProgress.textContent = '0%';
@@ -479,7 +481,6 @@ input[type="text"]:focus {
     cancelBtn.disabled = true;
     startBtn.disabled = false;
     statusBox.innerHTML = '';
-    clearInterval(pollTimer);
   }
 
   dropzone.addEventListener('click', () => fileInput.click());
@@ -514,6 +515,11 @@ input[type="text"]:focus {
       a.controls = true;
       a.src = URL.createObjectURL(file);
       previewContent.appendChild(a);
+    } else if (file.name.toLowerCase().endsWith('.pdf')) {
+      const pdfBox = document.createElement('div');
+      pdfBox.className = 'pdf-preview';
+      pdfBox.innerHTML = `<i class="bi bi-file-earmark-pdf"></i> 📄 ${file.name}`;
+      previewContent.appendChild(pdfBox);
     } else {
       previewContent.textContent = `Selected file: ${file.name} (${Math.round(file.size/1024)} KB)`;
     }
@@ -532,7 +538,7 @@ input[type="text"]:focus {
       const form = new FormData();
       form.append('file', currentFile);
       form.append('action', currentAction);
-      form.append('quality', 'high'); // High-quality compression default
+      form.append('quality', 'high');
       if (targetFormat.value && currentAction === 'convert') form.append('targetFormat', targetFormat.value.trim());
       if (outFilename.value) form.append('outFilename', outFilename.value.trim());
 
@@ -547,26 +553,26 @@ input[type="text"]:focus {
         }
       };
 
-      xhr.onreadystatechange = () => {
-        if (xhr.readyState === 4) {
-          startBtn.disabled = false;
-          cancelBtn.disabled = true;
-          if (xhr.status === 200) {
-            const blob = new Blob([xhr.response], { type: xhr.getResponseHeader('Content-Type') });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = outFilename.value || ('processed_' + currentFile.name);
-            link.click();
-            statusBox.innerHTML = `<div class="alert alert-success">✅ Done! Your file has been processed and downloaded.</div>`;
-            procMessage.textContent = 'Complete';
-            uploadProgress.style.width = '100%';
-            procProgress.style.width = '100%';
-          } else {
-            let msg = 'Upload failed';
-            try { msg = JSON.parse(xhr.responseText).error || xhr.responseText; } catch(e) {}
-            statusBox.innerHTML = `<div class="alert alert-danger">${msg}</div>`;
-            procMessage.textContent = '';
-          }
+      xhr.onload = () => {
+        startBtn.disabled = false;
+        cancelBtn.disabled = true;
+        if (xhr.status === 200) {
+          const blob = xhr.response instanceof ArrayBuffer
+            ? new Blob([xhr.response], { type: xhr.getResponseHeader('Content-Type') })
+            : new Blob([xhr.response]);
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = outFilename.value || ('processed_' + currentFile.name);
+          link.click();
+          statusBox.innerHTML = `<div class="alert alert-success">✅ Done! File processed successfully.</div>`;
+          procMessage.textContent = 'Complete';
+          uploadProgress.style.width = '100%';
+          procProgress.style.width = '100%';
+        } else {
+          let msg = 'Upload failed';
+          try { msg = JSON.parse(xhr.responseText).error || xhr.responseText; } catch(e) {}
+          statusBox.innerHTML = `<div class="alert alert-danger">${msg}</div>`;
+          procMessage.textContent = '';
         }
       };
 
@@ -578,7 +584,6 @@ input[type="text"]:focus {
   });
 
   cancelBtn.addEventListener('click', () => {
-    clearInterval(pollTimer);
     procMessage.textContent = 'Cancelled by user';
     cancelBtn.disabled = true;
     startBtn.disabled = false;
@@ -586,6 +591,6 @@ input[type="text"]:focus {
 
   resetUI();
 </script>
-</body> 
+</body>
 </html>
-                 
+ 
