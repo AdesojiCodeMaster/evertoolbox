@@ -333,7 +333,8 @@ input[type="text"]:focus {
 
 
 
- <!DOCTYPE html>
+
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -349,12 +350,24 @@ input[type="text"]:focus {
       align-items: center;
       padding: 40px;
     }
-    h1 { font-size: 1.8rem; margin-bottom: 0.5rem; text-align: center; }
-
-    .tab-container { display: flex; margin-bottom: 20px; gap: 10px; }
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+    .tab-container {
+      display: flex;
+      margin-bottom: 20px;
+      gap: 10px;
+    }
     .tab-btn {
-      padding: 10px 20px; border: none; border-radius: 8px;
-      cursor: pointer; font-weight: 600; color: #fff; transition: all 0.25s;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      color: #fff;
+      transition: all 0.25s;
     }
     .tab-btn.convert { background: #2563eb; }
     .tab-btn.convert:hover { background: #1d4ed8; }
@@ -363,56 +376,100 @@ input[type="text"]:focus {
     .tab-btn.active { transform: scale(1.05); box-shadow: 0 0 6px rgba(0,0,0,0.25); }
 
     .tool-box {
-      width: 100%; max-width: 520px; background: #fff;
-      border-radius: 12px; box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-      padding: 25px; text-align: center;
+      width: 100%;
+      max-width: 520px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+      padding: 25px;
+      text-align: center;
     }
 
     input[type=file] { display: none; }
     .file-label {
-      display: block; background: #e5e7eb; padding: 12px;
-      border-radius: 8px; cursor: pointer; margin-bottom: 15px; font-weight: 500;
+      display: block;
+      background: #e5e7eb;
+      padding: 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-bottom: 15px;
+      font-weight: 500;
     }
 
     .file-preview { margin: 10px 0; }
-    .file-preview img, .file-preview video, .file-preview iframe {
-      max-width: 100%; max-height: 180px; border-radius: 10px;
-      margin-top: 10px; border: 1px solid #d1d5db;
+    .file-preview img,
+    .file-preview video,
+    .file-preview iframe {
+      max-width: 100%;
+      max-height: 180px;
+      border-radius: 10px;
+      margin-top: 10px;
+      border: 1px solid #d1d5db;
     }
     .file-info { margin-top: 5px; font-size: 0.9rem; color: #555; }
 
     select, button {
-      padding: 10px; border-radius: 8px; border: 1px solid #d1d5db;
-      margin: 8px 0; width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      margin: 8px 0;
+      width: 100%;
     }
     button {
-      background: #2563eb; color: #fff; font-weight: bold;
-      border: none; cursor: pointer; transition: background 0.3s;
+      background: #2563eb;
+      color: #fff;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      transition: background 0.3s;
     }
     button:hover { background: #1e40af; }
 
     .progress-container {
-      margin: 15px 0; width: 100%; background: #f3f4f6;
-      border-radius: 8px; overflow: hidden; height: 8px;
+      margin: 15px 0;
+      width: 100%;
+      background: #f3f4f6;
+      border-radius: 8px;
+      overflow: hidden;
+      height: 8px;
     }
     .progress-bar {
-      height: 100%; background-color: #2563eb; width: 0;
+      height: 100%;
+      background-color: #2563eb;
+      width: 0;
       transition: width 0.3s;
     }
     .message {
-      margin-top: 10px; font-weight: 600; display: flex;
-      align-items: center; justify-content: center; gap: 6px;
+      margin-top: 10px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
     }
     .spinner {
-      border: 3px solid #cbd5e1; border-top: 3px solid #2563eb;
-      border-radius: 50%; width: 18px; height: 18px;
-      animation: spin 1s linear infinite; display: none;
+      border: 3px solid #cbd5e1;
+      border-top: 3px solid #2563eb;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      animation: spin 1s linear infinite;
+      display: none;
     }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
 
     .download-btn, .reset-btn {
-      display: none; border: none; border-radius: 8px;
-      padding: 10px; margin-top: 10px; width: 100%; font-weight: 600; color: #fff;
+      display: none;
+      border: none;
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 10px;
+      width: 100%;
+      font-weight: 600;
+      color: #fff;
     }
     .download-btn { background: #15803d; }
     .download-btn:hover { background: #166534; }
@@ -474,7 +531,6 @@ input[type="text"]:focus {
     const filePreview = document.getElementById("filePreview");
     const fileInfo = document.getElementById("fileInfo");
     const progressBar = document.getElementById("progressBar");
-    const message = document.getElementById("message");
     const spinner = document.getElementById("spinner");
     const msgText = document.getElementById("msgText");
     const downloadLink = document.getElementById("downloadLink");
@@ -496,60 +552,42 @@ input[type="text"]:focus {
       actionBtn.textContent = "Compress";
     };
 
-    // 📂 File Preview + Info
- 
-  const fileInput = document.getElementById("fileInput");
-  const filePreview = document.getElementById("filePreview");
-  const fileInfo = document.getElementById("fileInfo");
+    fileInput.addEventListener("change", () => {
+      filePreview.innerHTML = "";
+      fileInfo.textContent = "";
+      const file = fileInput.files[0];
+      if (!file) return;
 
-  fileInput.addEventListener("change", (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
+      const type = file.type;
+      const url = URL.createObjectURL(file);
 
-    // Clear previous preview
-    filePreview.innerHTML = "";
-    fileInfo.innerHTML = "";
+      if (type.startsWith("image/")) {
+        const img = document.createElement("img");
+        img.src = url;
+        filePreview.appendChild(img);
+      } else if (type.startsWith("video/")) {
+        const vid = document.createElement("video");
+        vid.src = url; vid.controls = true;
+        filePreview.appendChild(vid);
+      } else if (type.startsWith("audio/")) {
+        const aud = document.createElement("audio");
+        aud.src = url; aud.controls = true;
+        filePreview.appendChild(aud);
+      } else if (file.name.toLowerCase().endsWith(".pdf")) {
+        const embed = document.createElement("embed");
+        embed.src = url;
+        embed.type = "application/pdf";
+        embed.style.width = "100%";
+        embed.style.height = "200px";
+        filePreview.appendChild(embed);
+      } else {
+        filePreview.textContent = `📄 ${file.name}`;
+      }
 
-    // Show file info
-    const info = document.createElement("p");
-    info.textContent = `📄 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-    fileInfo.appendChild(info);
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      fileInfo.textContent = `File: ${file.name} (${type || "unknown"}) • ${sizeMB} MB`;
+    });
 
-    const fileURL = URL.createObjectURL(file);
-
-    // Image preview
-    if (file.type.startsWith("image/")) {
-      const img = document.createElement("img");
-      img.src = fileURL;
-      img.alt = "Image preview";
-      img.style.maxWidth = "100%";
-      img.style.borderRadius = "10px";
-      filePreview.appendChild(img);
-    }
-    // PDF preview
-    else if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
-      const iframe = document.createElement("iframe");
-      iframe.src = fileURL + "#toolbar=0&navpanes=0";
-      iframe.width = "100%";
-      iframe.height = "300";
-      iframe.style.border = "1px solid #ccc";
-      iframe.style.borderRadius = "10px";
-      iframe.style.marginTop = "10px";
-      filePreview.appendChild(iframe);
-    }
-    // Other formats
-    else {
-      const msg = document.createElement("p");
-      msg.textContent = "🔍 No preview available for this file type.";
-      filePreview.appendChild(msg);
-    }
-//   const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
- //  fileInfo.textContent = `File: ${file.name} (${type || "unknown"}) • ${sizeMB} MB`;
-  });
-
- 
-
-    // 🚀 Submit (Convert / Compress)
     form.addEventListener("submit", e => {
       e.preventDefault();
       const file = fileInput.files[0];
@@ -576,10 +614,7 @@ input[type="text"]:focus {
         if (e.lengthComputable) {
           const percent = (e.loaded / e.total) * 100;
           progressBar.style.width = percent + "%";
-          if (percent >= 100) {
-            msgText.textContent = "Processing...";
-            spinner.style.display = "inline-block";
-          }
+          if (percent >= 100) msgText.textContent = "Processing...";
         }
       };
 
@@ -601,7 +636,6 @@ input[type="text"]:focus {
       xhr.send(formData);
     });
 
-    // 🔄 Reset Form
     resetBtn.addEventListener("click", () => {
       fileInput.value = "";
       filePreview.innerHTML = "";
@@ -614,6 +648,11 @@ input[type="text"]:focus {
     });
   </script>
 </body>
-</html>
+ </html>
+ 
+
+
+
+
 
  
