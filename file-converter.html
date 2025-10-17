@@ -497,45 +497,57 @@ input[type="text"]:focus {
     };
 
     // 📂 File Preview + Info
-    fileInput.addEventListener("change", () => {
-      filePreview.innerHTML = "";
-      fileInfo.textContent = "";
-      const file = fileInput.files[0];
-      if (!file) return;
-      const url = URL.createObjectURL(file);
-      const type = file.type;
+ 
+  const fileInput = document.getElementById("fileInput");
+  const filePreview = document.getElementById("filePreview");
+  const fileInfo = document.getElementById("fileInfo");
 
-      if (type.startsWith("image/")) {
-        const img = document.createElement("img");
-        img.src = url;
-        img.alt = "Preview";
-        filePreview.appendChild(img);
-      } else if (type.startsWith("video/")) {
-        const vid = document.createElement("video");
-        vid.src = url; vid.controls = true;
-        filePreview.appendChild(vid);
-      } else if (type.startsWith("audio/")) {
-        const aud = document.createElement("audio");
-        aud.src = url; aud.controls = true;
-        filePreview.appendChild(aud);
-      } else if (type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
-        const iframe = document.createElement("iframe");
-        iframe.src = url;
-        iframe.type = "application/pdf";
-        iframe.width = "100%";
-        iframe.height = "220";
-        iframe.style.border = "1px solid #d1d5db";
-        iframe.style.borderRadius = "8px";
-        filePreview.appendChild(iframe);
-      } else {
-        const placeholder = document.createElement("p");
-        placeholder.textContent = `📄 ${file.name}`;
-        filePreview.appendChild(placeholder);
-      }
+  fileInput.addEventListener("change", (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
 
-      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-      fileInfo.textContent = `File: ${file.name} (${type || "unknown"}) • ${sizeMB} MB`;
-    });
+    // Clear previous preview
+    filePreview.innerHTML = "";
+    fileInfo.innerHTML = "";
+
+    // Show file info
+    const info = document.createElement("p");
+    info.textContent = `📄 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    fileInfo.appendChild(info);
+
+    const fileURL = URL.createObjectURL(file);
+
+    // Image preview
+    if (file.type.startsWith("image/")) {
+      const img = document.createElement("img");
+      img.src = fileURL;
+      img.alt = "Image preview";
+      img.style.maxWidth = "100%";
+      img.style.borderRadius = "10px";
+      filePreview.appendChild(img);
+    }
+    // PDF preview
+    else if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
+      const iframe = document.createElement("iframe");
+      iframe.src = fileURL + "#toolbar=0&navpanes=0";
+      iframe.width = "100%";
+      iframe.height = "300";
+      iframe.style.border = "1px solid #ccc";
+      iframe.style.borderRadius = "10px";
+      iframe.style.marginTop = "10px";
+      filePreview.appendChild(iframe);
+    }
+    // Other formats
+    else {
+      const msg = document.createElement("p");
+      msg.textContent = "🔍 No preview available for this file type.";
+      filePreview.appendChild(msg);
+    }
+   const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+   fileInfo.textContent = `File: ${file.name} (${type || "unknown"}) • ${sizeMB} MB`;
+  });
+
+ 
 
     // 🚀 Submit (Convert / Compress)
     form.addEventListener("submit", e => {
@@ -603,3 +615,5 @@ input[type="text"]:focus {
   </script>
 </body>
 </html>
+
+ 
