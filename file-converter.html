@@ -317,196 +317,8 @@ input[type="text"]:focus {
 
 
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1.0" />
-<title>EverToolbox Universal File Tool</title>
-<style>
-  body {
-    font-family: "Inter", sans-serif;
-    margin: 0;
-    padding: 0;
-    background: #f8fafc;
-    color: #1e293b;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-height: 100vh;
-  }
-  header {
-    width: 100%;
-    background: #0f172a;
-    color: #fff;
-    text-align: center;
-    padding: 1rem;
-    font-size: 1.5rem;
-    font-weight: 600;
-  }
-  .tabs {
-    display: flex;
-    justify-content: center;
-    margin-top: 1rem;
-  }
-  .tab {
-    padding: 0.75rem 1.5rem;
-    margin: 0 0.25rem;
-    background: #e2e8f0;
-    border-radius: 0.5rem 0.5rem 0 0;
-    cursor: pointer;
-    font-weight: 500;
-  }
-  .tab.active { background: #fff; border-bottom: 2px solid #2563eb; }
-  .panel {
-    background: #fff;
-    padding: 2rem;
-    border-radius: 0 0.75rem 0.75rem 0.75rem;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-    width: 95%;
-    max-width: 500px;
-  }
-  input[type=file], select, button {
-    width: 100%;
-    margin: 0.75rem 0;
-    padding: 0.75rem;
-    border-radius: 0.5rem;
-    border: 1px solid #cbd5e1;
-    font-size: 1rem;
-  }
-  button {
-    background: #2563eb;
-    color: #fff;
-    border: none;
-    cursor: pointer;
-    font-weight: 600;
-  }
-  button:hover { background: #1d4ed8; }
-  #progress { height: 8px; width: 100%; background: #e2e8f0; border-radius: 4px; margin-top: 1rem; overflow: hidden; }
-  #progress-bar { height: 100%; width: 0%; background: #2563eb; transition: width 0.3s; }
-  .hidden { display: none; }
-  footer { margin-top: auto; padding: 1rem; font-size: 0.9rem; color: #64748b; }
-</style>
-</head>
-<body>
-<header>⚙️ EverToolbox Universal File Tool</header>
 
-<div class="tabs">
-  <div class="tab active" data-mode="convert">Convert Files</div>
-  <div class="tab" data-mode="compress">Compress Files</div>
-</div>
 
-<div class="panel">
-  <input type="file" id="fileInput" required />
-  <select id="formatSelect">
-    <option value="">Select target format...</option>
-    <optgroup label="Images">
-      <option>jpg</option>
-      <option>jpeg</option>
-      <option>png</option>
-      <option>webp</option>
-      <option>gif</option>
-      <option>tiff</option>
-      <option>bmp</option>
-    </optgroup>
-    <optgroup label="Audio">
-      <option>mp3</option>
-      <option>wav</option>
-      <option>ogg</option>
-      <option>aac</option>
-      <option>flac</option>
-    </optgroup>
-    <optgroup label="Video">
-      <option>mp4</option>
-      <option>avi</option>
-      <option>mov</option>
-      <option>webm</option>
-      <option>mkv</option>
-    </optgroup>
-    <optgroup label="Documents">
-      <option>pdf</option>
-      <option>docx</option>
-      <option>txt</option>
-      <option>md</option>
-      <option>html</option>
-    </optgroup>
-  </select>
-
-  <button id="startBtn">Start</button>
-  <div id="progress"><div id="progress-bar"></div></div>
-  <p id="status"></p>
-  <a id="downloadLink" class="hidden" download>Download Processed File</a>
-</div>
-
-<footer>© 2025 EverToolbox • Powered by Render</footer>
-
-<script>
-const API_URL = "https://evertoolbox-backend.onrender.com/api/tools/file";
-let currentMode = "convert";
-
-document.querySelectorAll(".tab").forEach(tab => {
-  tab.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-    tab.classList.add("active");
-    currentMode = tab.dataset.mode;
-    document.getElementById("formatSelect").disabled = currentMode === "compress";
-  });
-});
-
-document.getElementById("startBtn").addEventListener("click", async () => {
-  const fileInput = document.getElementById("fileInput");
-  const targetFormat = document.getElementById("formatSelect").value;
-  const status = document.getElementById("status");
-  const progressBar = document.getElementById("progress-bar");
-  const downloadLink = document.getElementById("downloadLink");
-
-  if (!fileInput.files.length) return alert("Please select a file first.");
-  if (currentMode === "convert" && !targetFormat)
-    return alert("Please select a target format.");
-
-  const formData = new FormData();
-  formData.append("file", fileInput.files[0]);
-  formData.append("mode", currentMode);
-  if (currentMode === "convert") formData.append("targetFormat", targetFormat);
-
-  status.textContent = "Processing...";
-  progressBar.style.width = "0%";
-  downloadLink.classList.add("hidden");
-
-  const xhr = new XMLHttpRequest();
-  xhr.open("POST", API_URL);
-  xhr.responseType = "blob";
-
-  xhr.upload.onprogress = e => {
-    if (e.lengthComputable) {
-      const percent = Math.round((e.loaded / e.total) * 100);
-      progressBar.style.width = percent + "%";
-    }
-  };
-
-  xhr.onload = () => {
-    if (xhr.status === 200) {
-      const blob = xhr.response;
-      const url = window.URL.createObjectURL(blob);
-      downloadLink.href = url;
-      downloadLink.download = fileInput.files[0].name.replace(/\.[^/.]+$/, "") + "_processed";
-      downloadLink.textContent = "⬇️ Download File";
-      downloadLink.classList.remove("hidden");
-      status.textContent = "✅ Completed successfully!";
-    } else {
-      status.textContent = "❌ Error: " + (xhr.statusText || "Failed");
-    }
-  };
-
-  xhr.onerror = () => {
-    status.textContent = "❌ Network or server error.";
-  };
-
-  xhr.send(formData);
-});
-</script>
-</body>
-</html>
  
 
 
@@ -515,4 +327,314 @@ document.getElementById("startBtn").addEventListener("click", async () => {
 
 
 
+ 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EverToolbox – Universal File Converter & Compressor</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Roboto, sans-serif;
+      background: #f9fafb;
+      color: #222;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px;
+    }
 
+    h1 {
+      font-size: 1.8rem;
+      color: #111827;
+      margin-bottom: 0.5rem;
+      text-align: center;
+    }
+
+    .tab-container {
+      display: flex;
+      margin-bottom: 20px;
+      gap: 10px;
+    }
+
+    .tab-btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 15px;
+      color: white;
+      transition: background 0.3s;
+    }
+
+    .tab-btn.convert { background-color: #2563eb; }
+    .tab-btn.convert:hover { background-color: #1d4ed8; }
+
+    .tab-btn.compress { background-color: #16a34a; }
+    .tab-btn.compress:hover { background-color: #15803d; }
+
+    .tab-btn.active {
+      box-shadow: 0 0 8px rgba(0,0,0,0.2);
+      transform: scale(1.05);
+    }
+
+    .tool-box {
+      width: 100%;
+      max-width: 500px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      padding: 25px;
+      text-align: center;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .file-label {
+      display: block;
+      background: #e5e7eb;
+      padding: 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-bottom: 15px;
+      font-weight: 500;
+    }
+
+    .file-preview {
+      margin: 10px 0;
+      text-align: center;
+    }
+
+    .file-preview img, .file-preview video {
+      max-width: 100%;
+      max-height: 180px;
+      border-radius: 10px;
+      margin-top: 10px;
+    }
+
+    select, button {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      margin: 8px 0;
+      width: 100%;
+    }
+
+    button {
+      background-color: #2563eb;
+      color: white;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    button:hover { background-color: #1e40af; }
+
+    .progress-container {
+      margin: 15px 0;
+      width: 100%;
+      background: #f3f4f6;
+      border-radius: 8px;
+      overflow: hidden;
+      height: 8px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background-color: #2563eb;
+      width: 0;
+      transition: width 0.3s;
+    }
+
+    .message {
+      margin-top: 10px;
+      font-weight: 600;
+    }
+
+    .download-btn {
+      display: none;
+      background-color: #15803d;
+      color: white;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 10px;
+      width: 100%;
+    }
+
+    .download-btn:hover {
+      background-color: #166534;
+    }
+  </style>
+</head>
+<body>
+  <h1>⚙️ EverToolbox Converter & Compressor</h1>
+
+  <div class="tab-container">
+    <button class="tab-btn convert active" id="convertTab">Convert Files</button>
+    <button class="tab-btn compress" id="compressTab">Compress Files</button>
+  </div>
+
+  <div class="tool-box">
+    <form id="fileForm">
+      <label class="file-label" for="fileInput">📂 Choose a file</label>
+      <input type="file" id="fileInput" name="file" required />
+      <div class="file-preview" id="filePreview"></div>
+
+      <select id="targetFormat" required>
+        <option value="">Select target format...</option>
+        <optgroup label="Images">
+          <option>jpg</option>
+          <option>jpeg</option>
+          <option>png</option>
+          <option>webp</option>
+          <option>gif</option>
+          <option>tiff</option>
+          <option>bmp</option>
+        </optgroup>
+        <optgroup label="Audio">
+          <option>mp3</option>
+          <option>wav</option>
+          <option>ogg</option>
+          <option>aac</option>
+          <option>flac</option>
+        </optgroup>
+        <optgroup label="Video">
+          <option>mp4</option>
+          <option>avi</option>
+          <option>mov</option>
+          <option>webm</option>
+          <option>mkv</option>
+        </optgroup>
+        <optgroup label="Documents">
+          <option>pdf</option>
+          <option>docx</option>
+          <option>txt</option>
+          <option>md</option>
+          <option>html</option>
+        </optgroup>
+      </select>
+
+      <button type="submit" id="actionBtn">Convert</button>
+      <div class="progress-container"><div class="progress-bar" id="progressBar"></div></div>
+      <p class="message" id="message"></p>
+      <a id="downloadLink" class="download-btn" download>⬇️ Download Result</a>
+    </form>
+  </div>
+
+  <script>
+    const API_URL = "https://evertoolbox-backend.onrender.com/api/tools/file";
+    let mode = "convert";
+
+    const convertTab = document.getElementById("convertTab");
+    const compressTab = document.getElementById("compressTab");
+    const actionBtn = document.getElementById("actionBtn");
+    const fileInput = document.getElementById("fileInput");
+    const targetFormat = document.getElementById("targetFormat");
+    const filePreview = document.getElementById("filePreview");
+    const message = document.getElementById("message");
+    const progressBar = document.getElementById("progressBar");
+    const downloadLink = document.getElementById("downloadLink");
+    const form = document.getElementById("fileForm");
+
+    convertTab.onclick = () => {
+      mode = "convert";
+      convertTab.classList.add("active");
+      compressTab.classList.remove("active");
+      targetFormat.disabled = false;
+      actionBtn.textContent = "Convert";
+    };
+
+    compressTab.onclick = () => {
+      mode = "compress";
+      compressTab.classList.add("active");
+      convertTab.classList.remove("active");
+      targetFormat.disabled = true;
+      actionBtn.textContent = "Compress";
+    };
+
+    fileInput.addEventListener("change", () => {
+      filePreview.innerHTML = "";
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      const type = file.type;
+      if (type.startsWith("image/")) {
+        const img = document.createElement("img");
+        img.src = URL.createObjectURL(file);
+        filePreview.appendChild(img);
+      } else if (type.startsWith("video/")) {
+        const vid = document.createElement("video");
+        vid.src = URL.createObjectURL(file);
+        vid.controls = true;
+        filePreview.appendChild(vid);
+      } else if (type.startsWith("audio/")) {
+        const audio = document.createElement("audio");
+        audio.src = URL.createObjectURL(file);
+        audio.controls = true;
+        filePreview.appendChild(audio);
+      } else {
+        filePreview.textContent = `📄 ${file.name}`;
+      }
+    });
+
+    form.addEventListener("submit", async e => {
+      e.preventDefault();
+      const file = fileInput.files[0];
+      if (!file) return alert("Please choose a file first.");
+
+      message.textContent = "";
+      progressBar.style.width = "0%";
+      downloadLink.style.display = "none";
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("mode", mode);
+      if (mode === "convert") formData.append("targetFormat", targetFormat.value);
+
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", API_URL);
+        xhr.responseType = "blob";
+
+        xhr.upload.onprogress = e => {
+          if (e.lengthComputable) {
+            const percent = (e.loaded / e.total) * 100;
+            progressBar.style.width = percent + "%";
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status === 200) {
+            const blob = xhr.response;
+            const fileName = `result_${Date.now()}`;
+            const url = window.URL.createObjectURL(blob);
+            downloadLink.href = url;
+            downloadLink.download = fileName;
+            downloadLink.style.display = "block";
+            message.textContent = "✅ Success! Click below to download.";
+          } else {
+            message.textContent = `❌ Error: ${xhr.statusText}`;
+          }
+        };
+
+        xhr.onerror = () => {
+          message.textContent = "❌ Upload failed. Try again.";
+        };
+
+        xhr.send(formData);
+      } catch (err) {
+        console.error(err);
+        message.textContent = "❌ Something went wrong.";
+      }
+    });
+  </script>
+</body>
+ </html>
+ 
