@@ -318,21 +318,6 @@ input[type="text"]:focus {
 
 
 
-
- 
-
-
-
-
-
-
-
-
-
-
-
- 
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -488,7 +473,6 @@ input[type="text"]:focus {
       actionBtn.textContent = "Compress";
     };
 
-    // ✅ PDF.js thumbnail rendering
     async function renderPDFThumbnail(file, container) {
       try {
         const pdfData = await file.arrayBuffer();
@@ -572,7 +556,7 @@ input[type="text"]:focus {
         if (xhr.status === 200) {
           const blob = xhr.response;
           const url = URL.createObjectURL(blob);
-          const fileName = "result_" + Date.now();
+          const fileName = xhr.getResponseHeader("Content-Disposition")?.split("filename=")[1]?.replace(/"/g, "") || "result_" + Date.now();
           downloadLink.href = url;
           downloadLink.download = fileName;
           downloadLink.style.display = "block";
@@ -596,11 +580,19 @@ input[type="text"]:focus {
     });
   </script>
 </body>
- </html>
+</html>
+ 
  
 
 
 
 
 
+
+
+
+
+
+
+ 
 
