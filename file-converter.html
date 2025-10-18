@@ -318,6 +318,13 @@ input[type="text"]:focus {
 
 
 
+
+
+
+
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -441,10 +448,9 @@ input[type="text"]:focus {
   </div>
 
   <script>
-    // ⚙️ Backend endpoint — adjust if your Render backend uses a different domain
-    //const API_URL = "https://evertoolbox-backend.onrender.com/api/tools/file";
-   const API_URL = "https://evertoolbox-backend-1.onrender.com/api/tools/file";
-   
+    // Use relative URL so the frontend works when served from the same backend.
+    // If you host frontend somewhere else, replace this with full backend URL.
+    const API_URL = "/api/tools/file";
     let mode = "convert";
 
     const convertTab = document.getElementById("convertTab");
@@ -476,7 +482,6 @@ input[type="text"]:focus {
       actionBtn.textContent = "Compress";
     };
 
-    // ✅ PDF.js thumbnail rendering
     async function renderPDFThumbnail(file, container) {
       try {
         const pdfData = await file.arrayBuffer();
@@ -494,7 +499,6 @@ input[type="text"]:focus {
       }
     }
 
-    // 🖼️ Preview handler
     fileInput.addEventListener("change", () => {
       filePreview.innerHTML = "";
       fileInfo.textContent = "";
@@ -526,7 +530,6 @@ input[type="text"]:focus {
       fileInfo.textContent = `File: ${file.name} (${type || "unknown"}) • ${sizeMB} MB`;
     });
 
-    // 🚀 Upload & handle response
     form.addEventListener("submit", e => {
       e.preventDefault();
       const file = fileInput.files[0];
@@ -562,13 +565,31 @@ input[type="text"]:focus {
         if (xhr.status === 200) {
           const blob = xhr.response;
           const url = URL.createObjectURL(blob);
-          const fileName = "result_" + Date.now();
+          // Try to read filename from Content-Disposition if present
+          const cd = xhr.getResponseHeader("Content-Disposition");
+          let fileName = "result_" + Date.now();
+          if (cd) {
+            const match = cd.match(/filename="?([^"]+)"?/);
+            if (match) fileName = match[1];
+          }
           downloadLink.href = url;
           downloadLink.download = fileName;
           downloadLink.style.display = "block";
           resetBtn.style.display = "block";
           msgText.textContent = "✅ Success! Click below to download.";
-        } else msgText.textContent = "❌ Conversion failed.";
+        } else {
+          // try to read JSON body for helpful message
+          xhr.response.text().then(text => {
+            try {
+              const json = JSON.parse(text);
+              msgText.textContent = `❌ ${json.error || 'Conversion failed.'}`;
+            } catch {
+              msgText.textContent = "❌ Conversion failed.";
+            }
+          }).catch(() => {
+            msgText.textContent = "❌ Conversion failed.";
+          });
+        }
       };
       xhr.onerror = () => { spinner.style.display = "none"; msgText.textContent = "❌ Upload error."; };
       xhr.send(formData);
@@ -587,5 +608,9 @@ input[type="text"]:focus {
   </script>
 </body>
 </html>
- 
+
+
+
+
+
  
