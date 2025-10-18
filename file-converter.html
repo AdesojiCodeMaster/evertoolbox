@@ -441,6 +441,7 @@ input[type="text"]:focus {
   </div>
 
   <script>
+    // ⚙️ Backend endpoint — adjust if your Render backend uses a different domain
     const API_URL = "https://evertoolbox-backend.onrender.com/api/tools/file";
     let mode = "convert";
 
@@ -473,6 +474,7 @@ input[type="text"]:focus {
       actionBtn.textContent = "Compress";
     };
 
+    // ✅ PDF.js thumbnail rendering
     async function renderPDFThumbnail(file, container) {
       try {
         const pdfData = await file.arrayBuffer();
@@ -490,6 +492,7 @@ input[type="text"]:focus {
       }
     }
 
+    // 🖼️ Preview handler
     fileInput.addEventListener("change", () => {
       filePreview.innerHTML = "";
       fileInfo.textContent = "";
@@ -521,6 +524,7 @@ input[type="text"]:focus {
       fileInfo.textContent = `File: ${file.name} (${type || "unknown"}) • ${sizeMB} MB`;
     });
 
+    // 🚀 Upload & handle response
     form.addEventListener("submit", e => {
       e.preventDefault();
       const file = fileInput.files[0];
@@ -556,7 +560,7 @@ input[type="text"]:focus {
         if (xhr.status === 200) {
           const blob = xhr.response;
           const url = URL.createObjectURL(blob);
-          const fileName = xhr.getResponseHeader("Content-Disposition")?.split("filename=")[1]?.replace(/"/g, "") || "result_" + Date.now();
+          const fileName = "result_" + Date.now();
           downloadLink.href = url;
           downloadLink.download = fileName;
           downloadLink.style.display = "block";
@@ -583,16 +587,3 @@ input[type="text"]:focus {
 </html>
  
  
-
-
-
-
-
-
-
-
-
-
-
- 
-
