@@ -325,7 +325,9 @@ input[type="text"]:focus {
 
 
 
-<!DOCTYPE html>
+
+
+ <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -333,6 +335,7 @@ input[type="text"]:focus {
   <title>EverToolbox – Universal File Converter & Compressor</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <style>
+    /* --- Minimal visual tweaks — preserves your original look --- */
     body {
       font-family: "Segoe UI", Roboto, sans-serif;
       background: #f9fafb;
@@ -372,9 +375,7 @@ input[type="text"]:focus {
     }
     .file-info { margin-top: 5px; font-size: 0.9rem; color: #555; }
 
-    select, button {
-      padding: 10px; border-radius: 8px; border: 1px solid #d1d5db; margin: 8px 0; width: 100%;
-    }
+    select, button { padding: 10px; border-radius: 8px; border: 1px solid #d1d5db; margin: 8px 0; width: 100%; }
     button {
       background: #2563eb; color: #fff; font-weight: bold; border: none; cursor: pointer;
       transition: background 0.3s;
@@ -387,22 +388,22 @@ input[type="text"]:focus {
     }
     .progress-bar { height: 100%; background-color: #2563eb; width: 0; transition: width 0.3s; }
 
-    .message { margin-top: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .message { margin-top: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; flex-direction: column; min-height: 40px; }
+    .msg-line { display:flex; gap:8px; align-items:center; }
     .spinner {
-      border: 3px solid #cbd5e1; border-top: 3px solid #2563eb;
-      border-radius: 50%; width: 18px; height: 18px;
+      border: 3px solid #cbd5e1; border-top: 3px solid #2563eb; border-radius: 50%; width: 18px; height: 18px;
       animation: spin 1s linear infinite; display: none;
     }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-    .download-btn, .reset-btn {
-      display: none; border: none; border-radius: 8px; padding: 10px;
-      margin-top: 10px; width: 100%; font-weight: 600; color: #fff;
-    }
+    .download-btn, .reset-btn { display: none; border: none; border-radius: 8px; padding: 10px; margin-top: 10px; width: 100%; font-weight: 600; color: #fff; }
     .download-btn { background: #15803d; }
     .download-btn:hover { background: #166534; }
     .reset-btn { background: #6b7280; }
     .reset-btn:hover { background: #4b5563; }
+
+    .size-info { font-weight: 600; color: #111827; }
+    .small { font-weight: 400; font-size: 0.9rem; color:#666; }
   </style>
 </head>
 <body>
@@ -413,7 +414,7 @@ input[type="text"]:focus {
   </div>
 
   <div class="tool-box">
-    <form id="fileForm">
+    <form id="fileForm" onsubmit="return false;">
       <label class="file-label" for="fileInput">📂 Choose a file</label>
       <input type="file" id="fileInput" name="file" required />
       <div class="file-preview" id="filePreview"></div>
@@ -439,25 +440,24 @@ input[type="text"]:focus {
         </optgroup>
       </select>
 
-      <button type="submit" id="actionBtn">Convert</button>
+      <button type="button" id="actionBtn">Convert</button>
       <div class="progress-container"><div class="progress-bar" id="progressBar"></div></div>
-      <div class="message" id="message"><div class="spinner" id="spinner"></div><span id="msgText"></span></div>
+
+      <div class="message" id="message">
+        <div class="msg-line"><div class="spinner" id="spinner"></div><span id="msgText"></span></div>
+        <div class="small" id="sizeCompare" style="display:none;"></div>
+      </div>
+
       <a id="downloadLink" class="download-btn" download>⬇️ Download Result</a>
       <button type="button" id="resetBtn" class="reset-btn">🔄 Reset</button>
     </form>
   </div>
 
   <script>
-    // Use relative URL so the frontend works when served from the same backend.
-    // If you host frontend somewhere else, replace this with full backend URL.
-  
-   //const API_URL = "/api/tools/file";
+    // API URL (use your backend URL)
+    const API_URL = "https://evertoolbox-backend-1.onrender.com/api/tools/file";
 
-   //const API_URL = "https://evertoolbox-backend-1.onrender.com/api/tools/file";
-   const API_URL = "https://evertoolbox-backend-1.onrender.com/api/tools/file";
-   
     let mode = "convert";
-
     const convertTab = document.getElementById("convertTab");
     const compressTab = document.getElementById("compressTab");
     const actionBtn = document.getElementById("actionBtn");
@@ -470,21 +470,28 @@ input[type="text"]:focus {
     const msgText = document.getElementById("msgText");
     const downloadLink = document.getElementById("downloadLink");
     const resetBtn = document.getElementById("resetBtn");
-    const form = document.getElementById("fileForm");
+    const sizeCompare = document.getElementById("sizeCompare");
+
+    // Maintain existing UI look — but ensure only single file can be selected (default)
+    fileInput.removeAttribute("multiple");
 
     convertTab.onclick = () => {
       mode = "convert";
       convertTab.classList.add("active");
       compressTab.classList.remove("active");
       targetFormat.disabled = false;
+      targetFormat.style.opacity = "1";
       actionBtn.textContent = "Convert";
+      msgText.textContent = "";
     };
     compressTab.onclick = () => {
       mode = "compress";
       compressTab.classList.add("active");
       convertTab.classList.remove("active");
-      targetFormat.disabled = true;
+      targetFormat.disabled = true; // hide/disable when compressing
+      targetFormat.style.opacity = "0.6";
       actionBtn.textContent = "Compress";
+      msgText.textContent = "";
     };
 
     async function renderPDFThumbnail(file, container) {
@@ -507,6 +514,7 @@ input[type="text"]:focus {
     fileInput.addEventListener("change", () => {
       filePreview.innerHTML = "";
       fileInfo.textContent = "";
+      sizeCompare.style.display = "none";
       const file = fileInput.files[0];
       if (!file) return;
 
@@ -514,17 +522,11 @@ input[type="text"]:focus {
       const url = URL.createObjectURL(file);
 
       if (type.startsWith("image/")) {
-        const img = document.createElement("img");
-        img.src = url;
-        filePreview.appendChild(img);
+        const img = document.createElement("img"); img.src = url; filePreview.appendChild(img);
       } else if (type.startsWith("video/")) {
-        const vid = document.createElement("video");
-        vid.src = url; vid.controls = true;
-        filePreview.appendChild(vid);
+        const vid = document.createElement("video"); vid.src = url; vid.controls = true; filePreview.appendChild(vid);
       } else if (type.startsWith("audio/")) {
-        const aud = document.createElement("audio");
-        aud.src = url; aud.controls = true;
-        filePreview.appendChild(aud);
+        const aud = document.createElement("audio"); aud.src = url; aud.controls = true; filePreview.appendChild(aud);
       } else if (type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
         renderPDFThumbnail(file, filePreview);
       } else {
@@ -535,18 +537,41 @@ input[type="text"]:focus {
       fileInfo.textContent = `File: ${file.name} (${type || "unknown"}) • ${sizeMB} MB`;
     });
 
-    form.addEventListener("submit", e => {
-      e.preventDefault();
+    // Helper: extract extension from filename
+    function extOf(name) {
+      const m = name.split('.'); return m.length > 1 ? m[m.length - 1].toLowerCase() : '';
+    }
+    // Helper: human size
+    function humanSize(bytes) {
+      if (!bytes && bytes !== 0) return '—';
+      const mb = bytes / (1024 * 1024);
+      if (mb >= 1) return `${mb.toFixed(2)} MB`;
+      const kb = bytes / 1024;
+      return `${kb.toFixed(2)} KB`;
+    }
+
+    actionBtn.addEventListener("click", async () => {
       const file = fileInput.files[0];
       if (!file) return alert("Please choose a file first.");
-      if (mode === "convert" && !targetFormat.value)
-        return alert("Please select target format.");
 
-      msgText.textContent = "Uploading...";
+      // client-side same-format block (avoid useless upload)
+      if (mode === "convert") {
+        if (!targetFormat.value) return alert("Please select target format.");
+        const inputExt = extOf(file.name);
+        const targ = targetFormat.value.trim().toLowerCase();
+        if (inputExt === targ) {
+          return alert(`Source and target format are the same (${targ}). Please choose a different target format.`);
+        }
+      }
+
+      // disable UI while processing
+      actionBtn.disabled = true; actionBtn.style.opacity = 0.6;
       spinner.style.display = "inline-block";
+      msgText.textContent = "Uploading...";
       progressBar.style.width = "0%";
       downloadLink.style.display = "none";
       resetBtn.style.display = "none";
+      sizeCompare.style.display = "none";
 
       const formData = new FormData();
       formData.append("file", file);
@@ -565,38 +590,75 @@ input[type="text"]:focus {
         }
       };
 
-      xhr.onload = () => {
+      xhr.onload = async () => {
         spinner.style.display = "none";
+        actionBtn.disabled = false; actionBtn.style.opacity = 1;
+        progressBar.style.width = "100%";
         if (xhr.status === 200) {
           const blob = xhr.response;
           const url = URL.createObjectURL(blob);
-          // Try to read filename from Content-Disposition if present
-          const cd = xhr.getResponseHeader("Content-Disposition");
+
+          // determine file name from Content-Disposition header if present
           let fileName = "result_" + Date.now();
+          const cd = xhr.getResponseHeader("Content-Disposition");
           if (cd) {
-            const match = cd.match(/filename="?([^"]+)"?/);
-            if (match) fileName = match[1];
+            const match = cd.match(/filename\*?=(?:UTF-8'')?"?([^;"]+)"?/i);
+            if (match && match[1]) {
+              fileName = decodeURIComponent(match[1].replace(/["']/g, ""));
+            }
+          } else {
+            // fallback: build name from original + extension (try to infer)
+            const orig = file.name.replace(/\.[^/.]+$/, "");
+            // try to extract MIME extension from blob type
+            const bExt = (() => {
+              if (blob.type) {
+                const map = { "image/jpeg":"jpg","image/png":"png","application/pdf":"pdf","audio/mpeg":"mp3","audio/wav":"wav","video/mp4":"mp4" };
+                return map[blob.type] || "";
+              }
+              return "";
+            })();
+            fileName = bExt ? `${orig}.${bExt}` : `${orig}`;
           }
+
+          // show download button + size comparison
           downloadLink.href = url;
           downloadLink.download = fileName;
           downloadLink.style.display = "block";
           resetBtn.style.display = "block";
-          msgText.textContent = "✅ Success! Click below to download.";
+
+          // show size comparison (original vs processed)
+          const originalSize = file.size;
+          const processedSize = blob.size;
+          const savedPercent = processedSize < 1 ? 0 : Math.round(((originalSize - processedSize) / originalSize) * 100);
+          sizeCompare.style.display = "block";
+          sizeCompare.innerHTML = `Original: <span class="size-info">${humanSize(originalSize)}</span> → Result: <span class="size-info">${humanSize(processedSize)}</span> (${savedPercent >= 0 ? savedPercent : 0}% change)`;
+          if (savedPercent <= 5 && savedPercent >= 0) {
+            // minimal reduction
+            msgText.textContent = "✅ Done — size reduction was minimal.";
+          } else if (savedPercent < 0) {
+            msgText.textContent = "⚠️ Done — result size increased slightly.";
+          } else {
+            msgText.textContent = "✅ Success! Click below to download.";
+          }
         } else {
-          // try to read JSON body for helpful message
-          xhr.response.text().then(text => {
-            try {
-              const json = JSON.parse(text);
-              msgText.textContent = `❌ ${json.error || 'Conversion failed.'}`;
-            } catch {
-              msgText.textContent = "❌ Conversion failed.";
-            }
-          }).catch(() => {
+          // try parse JSON body from server if present
+          try {
+            const text = await xhr.response.text();
+            const json = JSON.parse(text);
+            msgText.textContent = `❌ ${json.error || 'Conversion failed.'}`;
+          } catch (ex) {
+            // fallback: generic message
             msgText.textContent = "❌ Conversion failed.";
-          });
+          }
         }
       };
-      xhr.onerror = () => { spinner.style.display = "none"; msgText.textContent = "❌ Upload error."; };
+
+      xhr.onerror = () => {
+        spinner.style.display = "none";
+        actionBtn.disabled = false; actionBtn.style.opacity = 1;
+        msgText.textContent = "❌ Upload error.";
+      };
+
       xhr.send(formData);
     });
 
@@ -609,13 +671,8 @@ input[type="text"]:focus {
       spinner.style.display = "none";
       downloadLink.style.display = "none";
       resetBtn.style.display = "none";
+      sizeCompare.style.display = "none";
     });
   </script>
 </body>
 </html>
-
-
-
-
-
- 
