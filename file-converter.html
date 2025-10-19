@@ -336,14 +336,7 @@ input[type="text"]:focus {
 
 
 
-
-
-
-
-
-
-
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -466,14 +459,7 @@ input[type="text"]:focus {
   </div>
 
   <script>
-    // Use relative URL so the frontend works when served from the same backend.
-    // If you host frontend somewhere else, replace this with full backend URL.
-  
-   //const API_URL = "/api/tools/file";
-
-   //const API_URL = "https://evertoolbox-backend-1.onrender.com/api/tools/file";
-   const API_URL = "https://evertoolbox-backend-1.onrender.com/api/tools/file";
-   
+    const API_URL = "https://evertoolbox-backend-1.onrender.com/api/tools/file";
     let mode = "convert";
 
     const convertTab = document.getElementById("convertTab");
@@ -497,6 +483,7 @@ input[type="text"]:focus {
       targetFormat.disabled = false;
       actionBtn.textContent = "Convert";
     };
+
     compressTab.onclick = () => {
       mode = "compress";
       compressTab.classList.add("active");
@@ -583,38 +570,42 @@ input[type="text"]:focus {
         }
       };
 
-      xhr.onload = () => {
+      xhr.onload = async () => {
         spinner.style.display = "none";
-        if (xhr.status === 200) {
+
+        if (xhr.status === 200 && xhr.response) {
           const blob = xhr.response;
           const url = URL.createObjectURL(blob);
-          // Try to read filename from Content-Disposition if present
-          const cd = xhr.getResponseHeader("Content-Disposition");
           let fileName = "result_" + Date.now();
+
+          const cd = xhr.getResponseHeader("Content-Disposition");
           if (cd) {
             const match = cd.match(/filename="?([^"]+)"?/);
             if (match) fileName = match[1];
           }
+
           downloadLink.href = url;
           downloadLink.download = fileName;
           downloadLink.style.display = "block";
           resetBtn.style.display = "block";
           msgText.textContent = "✅ Success! Click below to download.";
-        } else {
-          // try to read JSON body for helpful message
-          xhr.response.text().then(text => {
-            try {
-              const json = JSON.parse(text);
-              msgText.textContent = `❌ ${json.error || 'Conversion failed.'}`;
-            } catch {
-              msgText.textContent = "❌ Conversion failed.";
-            }
-          }).catch(() => {
-            msgText.textContent = "❌ Conversion failed.";
-          });
+          return;
+        }
+
+        try {
+          const text = await new Response(xhr.response).text();
+          const json = JSON.parse(text);
+          msgText.textContent = `❌ ${json.error || "Operation failed."}`;
+        } catch {
+          msgText.textContent = "❌ Operation failed.";
         }
       };
-      xhr.onerror = () => { spinner.style.display = "none"; msgText.textContent = "❌ Upload error."; };
+
+      xhr.onerror = () => {
+        spinner.style.display = "none";
+        msgText.textContent = "❌ Network or CORS error.";
+      };
+
       xhr.send(formData);
     });
 
@@ -630,7 +621,11 @@ input[type="text"]:focus {
     });
   </script>
 </body>
-</html>
+ </html>
+ 
+
+
+
 
 
 
