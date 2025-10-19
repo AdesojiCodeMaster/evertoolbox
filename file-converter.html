@@ -340,7 +340,10 @@ input[type="text"]:focus {
 
 
 
-<!DOCTYPE html>
+
+
+
+ <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -436,6 +439,22 @@ input[type="text"]:focus {
 
       <select id="targetFormat" required>
         <option value="">Select target format...</option>
+        <optgroup label="Images">
+          <option>jpg</option><option>jpeg</option><option>png</option>
+          <option>webp</option><option>gif</option><option>tiff</option><option>bmp</option>
+        </optgroup>
+        <optgroup label="Audio">
+          <option>mp3</option><option>wav</option><option>ogg</option>
+          <option>aac</option><option>flac</option>
+        </optgroup>
+        <optgroup label="Video">
+          <option>mp4</option><option>avi</option><option>mov</option>
+          <option>webm</option><option>mkv</option>
+        </optgroup>
+        <optgroup label="Documents">
+          <option>pdf</option><option>docx</option><option>txt</option>
+          <option>md</option><option>html</option>
+        </optgroup>
       </select>
 
       <button type="submit" id="actionBtn">Convert</button>
@@ -447,15 +466,15 @@ input[type="text"]:focus {
   </div>
 
   <script>
-    const API_URL = "https://evertoolbox-backend-1.onrender.com/api/tools/file";
-    let mode = "convert";
+    // Use relative URL so the frontend works when served from the same backend.
+    // If you host frontend somewhere else, replace this with full backend URL.
+  
+   //const API_URL = "/api/tools/file";
 
-    const formats = {
-      image: ["jpg", "jpeg", "png", "webp", "gif", "tiff", "bmp"],
-      audio: ["mp3", "wav", "ogg", "aac", "flac"],
-      video: ["mp4", "avi", "mov", "webm", "mkv"],
-      document: ["pdf", "docx", "txt", "md", "html"]
-    };
+   //const API_URL = "https://evertoolbox-backend-1.onrender.com/api/tools/file";
+   const API_URL = "https://evertoolbox-backend-1.onrender.com/api/tools/file";
+   
+    let mode = "convert";
 
     const convertTab = document.getElementById("convertTab");
     const compressTab = document.getElementById("compressTab");
@@ -486,20 +505,6 @@ input[type="text"]:focus {
       actionBtn.textContent = "Compress";
     };
 
-    function populateFormats(category, isPdfToImage = false) {
-      targetFormat.innerHTML = '<option value="">Select target format...</option>';
-      const group = document.createElement("optgroup");
-      group.label = isPdfToImage ? "Convert PDF to Image" : "Available Formats";
-      const options = isPdfToImage ? formats.image : formats[category];
-      options.forEach(fmt => {
-        const opt = document.createElement("option");
-        opt.value = fmt;
-        opt.textContent = fmt.toUpperCase();
-        group.appendChild(opt);
-      });
-      targetFormat.appendChild(group);
-    }
-
     async function renderPDFThumbnail(file, container) {
       try {
         const pdfData = await file.arrayBuffer();
@@ -525,34 +530,23 @@ input[type="text"]:focus {
 
       const type = file.type;
       const url = URL.createObjectURL(file);
-      let category = "";
 
       if (type.startsWith("image/")) {
         const img = document.createElement("img");
         img.src = url;
         filePreview.appendChild(img);
-        category = "image";
       } else if (type.startsWith("video/")) {
         const vid = document.createElement("video");
         vid.src = url; vid.controls = true;
         filePreview.appendChild(vid);
-        category = "video";
       } else if (type.startsWith("audio/")) {
         const aud = document.createElement("audio");
         aud.src = url; aud.controls = true;
         filePreview.appendChild(aud);
-        category = "audio";
       } else if (type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
         renderPDFThumbnail(file, filePreview);
-        category = "document";
-        populateFormats("image", true); // PDF → image special case
       } else {
         filePreview.textContent = `📄 ${file.name}`;
-        category = "document";
-      }
-
-      if (category && !file.name.toLowerCase().endsWith(".pdf")) {
-        populateFormats(category);
       }
 
       const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
@@ -594,6 +588,7 @@ input[type="text"]:focus {
         if (xhr.status === 200) {
           const blob = xhr.response;
           const url = URL.createObjectURL(blob);
+          // Try to read filename from Content-Disposition if present
           const cd = xhr.getResponseHeader("Content-Disposition");
           let fileName = "result_" + Date.now();
           if (cd) {
@@ -606,7 +601,17 @@ input[type="text"]:focus {
           resetBtn.style.display = "block";
           msgText.textContent = "✅ Success! Click below to download.";
         } else {
-          msgText.textContent = "❌ Conversion failed.";
+          // try to read JSON body for helpful message
+          xhr.response.text().then(text => {
+            try {
+              const json = JSON.parse(text);
+              msgText.textContent = `❌ ${json.error || 'Conversion failed.'}`;
+            } catch {
+              msgText.textContent = "❌ Conversion failed.";
+            }
+          }).catch(() => {
+            msgText.textContent = "❌ Conversion failed.";
+          });
         }
       };
       xhr.onerror = () => { spinner.style.display = "none"; msgText.textContent = "❌ Upload error."; };
@@ -622,9 +627,11 @@ input[type="text"]:focus {
       spinner.style.display = "none";
       downloadLink.style.display = "none";
       resetBtn.style.display = "none";
-      targetFormat.innerHTML = '<option value="">Select target format...</option>';
     });
   </script>
 </body>
- </html>
+</html>
+
+
+
  
