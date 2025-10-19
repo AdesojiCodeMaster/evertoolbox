@@ -328,296 +328,133 @@ input[type="text"]:focus {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>EverToolbox – Universal File Converter & Compressor</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <title>EverToolbox File Tool</title>
   <style>
-    body {
-      font-family: "Segoe UI", Roboto, sans-serif;
-      background: #f9fafb;
-      color: #111827;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 40px;
-    }
-    h1 { font-size: 1.8rem; margin-bottom: 0.5rem; text-align: center; }
-    .tab-container { display: flex; margin-bottom: 20px; gap: 10px; }
-    .tab-btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; color: #fff; transition: all 0.25s; }
-    .tab-btn.convert { background: #2563eb; } .tab-btn.convert:hover { background: #1d4ed8; }
-    .tab-btn.compress { background: #16a34a; } .tab-btn.compress:hover { background: #15803d; }
-    .tab-btn.active { transform: scale(1.05); box-shadow: 0 0 6px rgba(0,0,0,0.25); }
-
-    .tool-box { width: 100%; max-width: 520px; background: #fff; border-radius: 12px;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.1); padding: 25px; text-align: center; }
-
-    input[type=file] { display: none; }
-    .file-label { display: block; background: #e5e7eb; padding: 12px; border-radius: 8px;
-      cursor: pointer; margin-bottom: 15px; font-weight: 500; }
-
-    .file-preview { margin: 10px 0; }
-    .file-preview img, .file-preview video, .file-preview audio, .file-preview canvas {
-      max-width: 100%; max-height: 180px; border-radius: 10px; margin-top: 10px;
-      border: 1px solid #d1d5db;
-    }
-    .file-info { margin-top: 5px; font-size: 0.9rem; color: #555; }
-
-    select, button { padding: 10px; border-radius: 8px; border: 1px solid #d1d5db; margin: 8px 0; width: 100%; }
-    button { background: #2563eb; color: #fff; font-weight: bold; border: none; cursor: pointer; transition: background 0.3s; }
-    button:hover { background: #1e40af; }
-
-    .progress-container { margin: 15px 0; width: 100%; background: #f3f4f6; border-radius: 8px; overflow: hidden; height: 8px; }
-    .progress-bar { height: 100%; background-color: #2563eb; width: 0; transition: width 0.3s; }
-
-    .message { margin-top: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 6px; }
-    .spinner { border: 3px solid #cbd5e1; border-top: 3px solid #2563eb; border-radius: 50%; width: 18px; height: 18px; animation: spin 1s linear infinite; display: none; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-    .download-btn, .reset-btn { display: none; border: none; border-radius: 8px; padding: 10px; margin-top: 10px; width: 100%; font-weight: 600; color: #fff; }
-    .download-btn { background: #15803d; } .download-btn:hover { background: #166534; }
-    .reset-btn { background: #6b7280; } .reset-btn:hover { background: #4b5563; }
+    body { font-family: Arial, sans-serif; background: #f7f8fa; text-align: center; padding: 40px; }
+    .container { background: white; max-width: 500px; margin: auto; padding: 30px; border-radius: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    button { margin-top: 20px; padding: 10px 20px; background: #0066ff; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    button:hover { background: #004ecc; }
+    select, input[type=file] { margin-top: 15px; width: 90%; padding: 8px; }
+    .spinner { display: none; margin-top: 15px; }
   </style>
 </head>
 <body>
-  <h1>⚙️ EverToolbox Converter & Compressor</h1>
-  <div class="tab-container">
-    <button class="tab-btn convert active" id="convertTab">Convert Files</button>
-    <button class="tab-btn compress" id="compressTab">Compress Files</button>
-  </div>
-
-  <div class="tool-box">
-    <form id="fileForm">
-      <label class="file-label" for="fileInput">📂 Choose a file</label>
-      <input type="file" id="fileInput" name="file" required />
-      <div class="file-preview" id="filePreview"></div>
-      <div class="file-info" id="fileInfo"></div>
-
-      <select id="targetFormat" required>
-        <option value="">Select target format...</option>
-        <optgroup label="Images">
-          <option>jpg</option><option>jpeg</option><option>png</option>
-          <option>webp</option><option>gif</option><option>tiff</option><option>bmp</option>
-        </optgroup>
-        <optgroup label="Audio">
-          <option>mp3</option><option>wav</option><option>ogg</option>
-          <option>aac</option><option>flac</option>
-        </optgroup>
-        <optgroup label="Video">
-          <option>mp4</option><option>avi</option><option>mov</option>
-          <option>webm</option><option>mkv</option>
-        </optgroup>
-        <optgroup label="Documents">
-          <option>pdf</option><option>docx</option><option>txt</option>
-          <option>md</option><option>html</option>
-        </optgroup>
-      </select>
-
-      <button type="submit" id="actionBtn">Convert</button>
-      <div class="progress-container"><div class="progress-bar" id="progressBar"></div></div>
-      <div class="message" id="message"><div class="spinner" id="spinner"></div><span id="msgText"></span></div>
-      <a id="downloadLink" class="download-btn" download>⬇️ Download Result</a>
-      <button type="button" id="resetBtn" class="reset-btn">🔄 Reset</button>
-    </form>
+  <div class="container">
+    <h2>EverToolbox Universal File Tool</h2>
+    <input type="file" id="fileInput" />
+    <br />
+    <select id="formatSelect"></select>
+    <br />
+    <button onclick="convertFile()">Convert</button>
+    <button onclick="compressFile()">Compress</button>
+    <div class="spinner" id="spinner">Processing...</div>
   </div>
 
   <script>
-    // Keep your same API endpoint (server should be deployed to this URL)
-    const API_URL = "https://evertoolbox-backend-1.onrender.com/api/tools/file";
-
-    let mode = "convert";
-    const convertTab = document.getElementById("convertTab");
-    const compressTab = document.getElementById("compressTab");
-    const actionBtn = document.getElementById("actionBtn");
-    const fileInput = document.getElementById("fileInput");
-    const targetFormat = document.getElementById("targetFormat");
-    const filePreview = document.getElementById("filePreview");
-    const fileInfo = document.getElementById("fileInfo");
-    const progressBar = document.getElementById("progressBar");
+    const backendUrl = "https://your-backend-url.onrender.com";
+    const formatSelect = document.getElementById("formatSelect");
     const spinner = document.getElementById("spinner");
-    const msgText = document.getElementById("msgText");
-    const downloadLink = document.getElementById("downloadLink");
-    const resetBtn = document.getElementById("resetBtn");
-    const form = document.getElementById("fileForm");
 
-    convertTab.onclick = () => {
-      mode = "convert";
-      convertTab.classList.add("active");
-      compressTab.classList.remove("active");
-      targetFormat.disabled = false;
-      actionBtn.textContent = "Convert";
-    };
-    compressTab.onclick = () => {
-      mode = "compress";
-      compressTab.classList.add("active");
-      convertTab.classList.remove("active");
-      targetFormat.disabled = true;
-      actionBtn.textContent = "Compress";
+    const categories = {
+      audio: ["mp3", "wav", "aac", "flac"],
+      video: ["mp4", "webm", "mov", "avi", "mkv"],
+      image: ["jpg", "jpeg", "png", "webp", "gif"],
+      document: ["pdf", "txt", "docx"],
+      pdf: ["image"] // pdf to image
     };
 
-    async function renderPDFThumbnail(file, container) {
-      try {
-        const pdfData = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
-        const page = await pdf.getPage(1);
-        const viewport = page.getViewport({ scale: 0.5 });
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-        await page.render({ canvasContext: ctx, viewport }).promise;
-        container.appendChild(canvas);
-      } catch {
-        container.textContent = "📄 PDF preview unavailable.";
-      }
-    }
-
-    fileInput.addEventListener("change", () => {
-      filePreview.innerHTML = "";
-      fileInfo.textContent = "";
-      const file = fileInput.files[0];
+    document.getElementById("fileInput").addEventListener("change", function() {
+      const file = this.files[0];
       if (!file) return;
+      const ext = file.name.split(".").pop().toLowerCase();
 
-      const type = file.type;
-      const url = URL.createObjectURL(file);
+      let type;
+      if (categories.audio.includes(ext)) type = "audio";
+      else if (categories.video.includes(ext)) type = "video";
+      else if (categories.image.includes(ext)) type = "image";
+      else if (ext === "pdf") type = "pdf";
+      else type = "document";
 
-      if (type.startsWith("image/")) {
-        const img = document.createElement("img");
-        img.src = url;
-        filePreview.appendChild(img);
-      } else if (type.startsWith("video/")) {
-        const vid = document.createElement("video");
-        vid.src = url; vid.controls = true;
-        filePreview.appendChild(vid);
-      } else if (type.startsWith("audio/")) {
-        const aud = document.createElement("audio");
-        aud.src = url; aud.controls = true;
-        filePreview.appendChild(aud);
-      } else if (type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
-        renderPDFThumbnail(file, filePreview);
-      } else {
-        filePreview.textContent = `📄 ${file.name}`;
-      }
-
-      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-      fileInfo.textContent = `File: ${file.name} (${type || "unknown"}) • ${sizeMB} MB`;
-
-      // restrict targetFormat options based on file type
-      const allowedByType = {
-        image: ["jpg","jpeg","png","webp","gif","tiff","bmp","pdf"],
-        video: ["mp4","avi","mov","webm","mkv"],
-        audio: ["mp3","wav","ogg","aac","flac"],
-        document: ["pdf","docx","txt","md","html"]
-      };
-
-      const fileType = file.type || "";
-      let allowed = [];
-      if (fileType.startsWith("image/")) allowed = allowedByType.image;
-      else if (fileType.startsWith("video/")) allowed = allowedByType.video;
-      else if (fileType.startsWith("audio/")) allowed = allowedByType.audio;
-      else allowed = allowedByType.document;
-
-      Array.from(targetFormat.options).forEach(opt => {
-        if (!opt.value) return;
-        opt.disabled = !allowed.includes(opt.value);
+      formatSelect.innerHTML = "";
+      categories[type].forEach(fmt => {
+        const opt = document.createElement("option");
+        opt.value = fmt;
+        opt.textContent = fmt.toUpperCase();
+        formatSelect.appendChild(opt);
       });
-
-      if (targetFormat.value && targetFormat.options[targetFormat.selectedIndex].disabled) {
-        const firstAllowed = Array.from(targetFormat.options).find(o => o.value && !o.disabled);
-        if (firstAllowed) targetFormat.value = firstAllowed.value;
-      }
     });
 
-    form.addEventListener("submit", e => {
-      e.preventDefault();
-      const file = fileInput.files[0];
-      if (!file) return alert("Please choose a file first.");
-      if (mode === "convert" && !targetFormat.value) return alert("Please select target format.");
+    async function convertFile() {
+      const file = document.getElementById("fileInput").files[0];
+      if (!file) return alert("Please upload a file first.");
 
-      // Prevent same-format conversion on client
-      const inputExt = (file.name.split('.').pop() || '').toLowerCase();
-      if (mode === "convert" && inputExt && targetFormat.value && inputExt === targetFormat.value.toLowerCase()) {
-        return alert("You selected the same format as the original file — conversion cancelled.");
-      }
-
-      // spinner text depends on action
-      msgText.textContent = mode === "compress" ? "Compressing..." : "Converting...";
-      spinner.style.display = "inline-block";
-      progressBar.style.width = "0%";
-      downloadLink.style.display = "none";
-      resetBtn.style.display = "none";
+      const format = formatSelect.value;
+      spinner.style.display = "block";
+      spinner.innerText = "Converting...";
 
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("mode", mode);
-      if (mode === "convert") formData.append("targetFormat", targetFormat.value);
+      formData.append("format", format);
 
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", API_URL);
-      xhr.responseType = "blob";
-
-      xhr.upload.onprogress = e => {
-        if (e.lengthComputable) {
-          const percent = (e.loaded / e.total) * 100;
-          progressBar.style.width = percent + "%";
-          if (percent >= 100) {
-            msgText.textContent = (mode === "compress") ? "Compressing..." : "Converting...";
-          } else {
-            msgText.textContent = "Uploading...";
-          }
-        }
-      };
-
-      xhr.onload = () => {
-        spinner.style.display = "none";
-        if (xhr.status === 200) {
-          const blob = xhr.response;
-          const url = URL.createObjectURL(blob);
-          const cd = xhr.getResponseHeader("Content-Disposition") || "";
-          let fileName = "result_" + Date.now();
-          const match = cd.match(/filename\s*=\s*"?([^";]+)"?/i);
-          if (match && match[1]) fileName = match[1];
-
-          downloadLink.href = url;
-          downloadLink.download = fileName;
-          downloadLink.style.display = "block";
-          resetBtn.style.display = "block";
-          msgText.textContent = "✅ Success! Click below to download.";
-        } else {
-          const reader = new FileReader();
-          reader.onload = function() {
-            try {
-              const text = reader.result;
-              const json = JSON.parse(text);
-              msgText.textContent = `❌ ${json.error || 'Conversion failed.'}`;
-            } catch {
-              msgText.textContent = "❌ Conversion failed.";
-            }
-          };
-          reader.onerror = function() { msgText.textContent = "❌ Conversion failed."; };
-          if (xhr.response) reader.readAsText(xhr.response);
-          else msgText.textContent = "❌ Conversion failed.";
-        }
-      };
-
-      xhr.onerror = () => { spinner.style.display = "none"; msgText.textContent = "❌ Upload error."; };
-      xhr.send(formData);
-    });
-
-    resetBtn.addEventListener("click", () => {
-      fileInput.value = "";
-      filePreview.innerHTML = "";
-      fileInfo.textContent = "";
-      progressBar.style.width = "0%";
-      msgText.textContent = "";
+      const res = await fetch(`${backendUrl}/convert`, { method: "POST", body: formData });
       spinner.style.display = "none";
-      downloadLink.style.display = "none";
-      resetBtn.style.display = "none";
-    });
+
+      if (!res.ok) {
+        const err = await res.json();
+        return alert(err.error || "Conversion failed.");
+      }
+
+      const blob = await res.blob();
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = file.name.split(".")[0] + "." + format;
+      link.click();
+    }
+
+    async function compressFile() {
+      const file = document.getElementById("fileInput").files[0];
+      if (!file) return alert("Please upload a file first.");
+
+      spinner.style.display = "block";
+      spinner.innerText = "Compressing...";
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(`${backendUrl}/compress`, { method: "POST", body: formData });
+      spinner.style.display = "none";
+
+      if (!res.ok) {
+        const err = await res.json();
+        return alert(err.error || "Compression failed.");
+      }
+
+      const blob = await res.blob();
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = file.name.split(".")[0] + "_compressed." + file.name.split(".").pop();
+      link.click();
+    }
   </script>
 </body>
- </html>
-                       
+</html>
+ 
+
+ 
