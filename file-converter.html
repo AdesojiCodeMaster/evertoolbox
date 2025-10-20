@@ -458,20 +458,24 @@ input[type="text"]:focus {
     </form>
   </div>
 <script>
+  // === BACKEND ENDPOINT ===
   const API_URL = "https://evertoolbox-backend-1.onrender.com/api/tools/file";
-  let mode = "convert";
 
+  // === UI elements ===
+  const fileForm = document.getElementById("fileForm");
+  const fileInput = document.getElementById("fileInput");
+  const targetFormat = document.getElementById("targetFormat");
   const convertTab = document.getElementById("convertTab");
   const compressTab = document.getElementById("compressTab");
   const actionBtn = document.getElementById("actionBtn");
-  const fileInput = document.getElementById("fileInput");
-  const targetFormat = document.getElementById("targetFormat");
-  const progressBar = document.getElementById("progressBar");
-  const spinner = document.getElementById("spinner");
   const msgText = document.getElementById("msgText");
+  const spinner = document.getElementById("spinner");
+  const progressBar = document.getElementById("progressBar");
   const downloadLink = document.getElementById("downloadLink");
   const resetBtn = document.getElementById("resetBtn");
 
+  // === MODE HANDLING ===
+  let mode = "convert";
   convertTab.onclick = () => {
     mode = "convert";
     convertTab.classList.add("active");
@@ -487,18 +491,25 @@ input[type="text"]:focus {
     actionBtn.textContent = "Compress";
   };
 
-  document.getElementById("fileForm").addEventListener("submit", async e => {
+  // === FILE UPLOAD HANDLER ===
+  fileForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const file = fileInput.files[0];
-    if (!file) return alert("Please choose a file first.");
-    if (mode === "convert" && !targetFormat.value)
-      return alert("Please select target format.");
 
-    msgText.textContent = "Uploading...";
+    const file = fileInput.files[0];
+    if (!file) {
+      alert("Please select a file first.");
+      return;
+    }
+    if (mode === "convert" && !targetFormat.value) {
+      alert("Please choose a target format.");
+      return;
+    }
+
+    msgText.textContent = "⏳ Uploading and processing...";
     spinner.style.display = "inline-block";
-    progressBar.style.width = "0%";
     downloadLink.style.display = "none";
     resetBtn.style.display = "none";
+    progressBar.style.width = "0%";
 
     const formData = new FormData();
     formData.append("file", file);
@@ -506,47 +517,51 @@ input[type="text"]:focus {
     if (mode === "convert") formData.append("targetFormat", targetFormat.value);
 
     try {
-      const response = await fetch(API_URL, { method: "POST", body: formData });
+      const response = await fetch(API_URL, {
+        method: "POST",
+        body: formData
+      });
+
       spinner.style.display = "none";
 
       if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        msgText.textContent = `❌ ${errData.error || "Processing failed."}`;
+        const error = await response.json().catch(() => ({}));
+        msgText.textContent = `❌ ${error.error || "File processing failed."}`;
         return;
       }
 
+      // === SUCCESS ===
       const blob = await response.blob();
       const cd = response.headers.get("Content-Disposition");
-      let fileName = "result_" + Date.now();
+      let filename = "result_" + Date.now();
       if (cd) {
         const match = cd.match(/filename="?([^"]+)"?/);
-        if (match) fileName = match[1];
+        if (match) filename = match[1];
       }
 
       const url = URL.createObjectURL(blob);
       downloadLink.href = url;
-      downloadLink.download = fileName;
+      downloadLink.download = filename;
       downloadLink.style.display = "block";
+      msgText.textContent = "✅ Success! File ready below.";
       resetBtn.style.display = "block";
-      msgText.textContent = "✅ Success! Click below to download.";
     } catch (err) {
       spinner.style.display = "none";
+      console.error("Upload error:", err);
       msgText.textContent = "❌ Network or upload error.";
     }
   });
 
+  // === RESET BUTTON ===
   resetBtn.addEventListener("click", () => {
     fileInput.value = "";
-    document.getElementById("filePreview").innerHTML = "";
-    document.getElementById("fileInfo").textContent = "";
-    progressBar.style.width = "0%";
     msgText.textContent = "";
-    spinner.style.display = "none";
     downloadLink.style.display = "none";
     resetBtn.style.display = "none";
+    spinner.style.display = "none";
+    progressBar.style.width = "0%";
   });
-</script>
-	
+</script>	
 </body>
  </html>
  
