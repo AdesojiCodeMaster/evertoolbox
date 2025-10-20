@@ -457,169 +457,151 @@ input[type="text"]:focus {
       <button type="button" id="resetBtn" class="reset-btn">🔄 Reset</button>
     </form>
   </div>
+<script>
+  const API_URL = "https://evertoolbox-backend-1.onrender.com/api/tools/file";
 
-  <script>
-    const API_URL = "https://evertoolbox-backend-1.onrender.com/api/tools/file";
-    let mode = "convert";
+  let mode = "convert";
 
-    const convertTab = document.getElementById("convertTab");
-    const compressTab = document.getElementById("compressTab");
-    const actionBtn = document.getElementById("actionBtn");
-    const fileInput = document.getElementById("fileInput");
-    const targetFormat = document.getElementById("targetFormat");
-    const filePreview = document.getElementById("filePreview");
-    const fileInfo = document.getElementById("fileInfo");
-    const progressBar = document.getElementById("progressBar");
-    const spinner = document.getElementById("spinner");
-    const msgText = document.getElementById("msgText");
-    const downloadLink = document.getElementById("downloadLink");
-    const resetBtn = document.getElementById("resetBtn");
-    const form = document.getElementById("fileForm");
+  const convertTab = document.getElementById("convertTab");
+  const compressTab = document.getElementById("compressTab");
+  const actionBtn = document.getElementById("actionBtn");
+  const fileInput = document.getElementById("fileInput");
+  const targetFormat = document.getElementById("targetFormat");
+  const filePreview = document.getElementById("filePreview");
+  const fileInfo = document.getElementById("fileInfo");
+  const progressBar = document.getElementById("progressBar");
+  const spinner = document.getElementById("spinner");
+  const msgText = document.getElementById("msgText");
+  const downloadLink = document.getElementById("downloadLink");
+  const resetBtn = document.getElementById("resetBtn");
+  const form = document.getElementById("fileForm");
 
-    convertTab.onclick = () => {
-      mode = "convert";
-      convertTab.classList.add("active");
-      compressTab.classList.remove("active");
-      targetFormat.disabled = false;
-      actionBtn.textContent = "Convert";
-    };
+  convertTab.onclick = () => {
+    mode = "convert";
+    convertTab.classList.add("active");
+    compressTab.classList.remove("active");
+    targetFormat.disabled = false;
+    actionBtn.textContent = "Convert";
+  };
+  compressTab.onclick = () => {
+    mode = "compress";
+    compressTab.classList.add("active");
+    convertTab.classList.remove("active");
+    targetFormat.disabled = true;
+    actionBtn.textContent = "Compress";
+  };
 
-    compressTab.onclick = () => {
-      mode = "compress";
-      compressTab.classList.add("active");
-      convertTab.classList.remove("active");
-      targetFormat.disabled = true;
-      actionBtn.textContent = "Compress";
-    };
+  async function renderPDFThumbnail(file, container) {
+    try {
+      const pdfData = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
+      const page = await pdf.getPage(1);
+      const viewport = page.getViewport({ scale: 0.5 });
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      container.appendChild(canvas);
+    } catch {
+      container.textContent = "📄 PDF preview unavailable.";
+    }
+  }
 
-    async function renderPDFThumbnail(file, container) {
-      try {
-        const pdfData = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
-        const page = await pdf.getPage(1);
-        const viewport = page.getViewport({ scale: 0.5 });
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-        await page.render({ canvasContext: ctx, viewport }).promise;
-        container.appendChild(canvas);
-      } catch {
-        container.textContent = "📄 PDF preview unavailable.";
-      }
+  fileInput.addEventListener("change", () => {
+    filePreview.innerHTML = "";
+    fileInfo.textContent = "";
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const type = file.type;
+    const url = URL.createObjectURL(file);
+
+    if (type.startsWith("image/")) {
+      const img = document.createElement("img");
+      img.src = url;
+      filePreview.appendChild(img);
+    } else if (type.startsWith("video/")) {
+      const vid = document.createElement("video");
+      vid.src = url;
+      vid.controls = true;
+      filePreview.appendChild(vid);
+    } else if (type.startsWith("audio/")) {
+      const aud = document.createElement("audio");
+      aud.src = url;
+      aud.controls = true;
+      filePreview.appendChild(aud);
+    } else if (type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+      renderPDFThumbnail(file, filePreview);
+    } else {
+      filePreview.textContent = `📄 ${file.name}`;
     }
 
-    fileInput.addEventListener("change", () => {
-      filePreview.innerHTML = "";
-      fileInfo.textContent = "";
-      const file = fileInput.files[0];
-      if (!file) return;
+    const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+    fileInfo.textContent = `File: ${file.name} (${type || "unknown"}) • ${sizeMB} MB`;
+  });
 
-      const type = file.type;
-      const url = URL.createObjectURL(file);
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const file = fileInput.files[0];
+    if (!file) return alert("Please choose a file first.");
+    if (mode === "convert" && !targetFormat.value)
+      return alert("Please select target format.");
 
-      if (type.startsWith("image/")) {
-        const img = document.createElement("img");
-        img.src = url;
-        filePreview.appendChild(img);
-      } else if (type.startsWith("video/")) {
-        const vid = document.createElement("video");
-        vid.src = url; vid.controls = true;
-        filePreview.appendChild(vid);
-      } else if (type.startsWith("audio/")) {
-        const aud = document.createElement("audio");
-        aud.src = url; aud.controls = true;
-        filePreview.appendChild(aud);
-      } else if (type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
-        renderPDFThumbnail(file, filePreview);
-      } else {
-        filePreview.textContent = `📄 ${file.name}`;
+    msgText.textContent = "Uploading...";
+    spinner.style.display = "inline-block";
+    progressBar.style.width = "0%";
+    downloadLink.style.display = "none";
+    resetBtn.style.display = "none";
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("mode", mode);
+    if (mode === "convert") formData.append("format", targetFormat.value); // ✅ renamed to 'format' for backend
+
+    try {
+      const response = await fetch(API_URL, { method: "POST", body: formData });
+      spinner.style.display = "none";
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        msgText.textContent = `❌ ${error.error || "Conversion failed."}`;
+        return;
       }
 
-      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-      fileInfo.textContent = `File: ${file.name} (${type || "unknown"}) • ${sizeMB} MB`;
-    });
+      const blob = await response.blob();
+      const cd = response.headers.get("Content-Disposition");
+      let fileName = "result_" + Date.now();
+      if (cd) {
+        const match = cd.match(/filename="?([^"]+)"?/);
+        if (match) fileName = match[1];
+      }
 
-    form.addEventListener("submit", e => {
-      e.preventDefault();
-      const file = fileInput.files[0];
-      if (!file) return alert("Please choose a file first.");
-      if (mode === "convert" && !targetFormat.value)
-        return alert("Please select target format.");
-
-      msgText.textContent = "Uploading...";
-      spinner.style.display = "inline-block";
-      progressBar.style.width = "0%";
-      downloadLink.style.display = "none";
-      resetBtn.style.display = "none";
-
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("mode", mode);
-      if (mode === "convert") formData.append("targetFormat", targetFormat.value);
-
-      const xhr = new XMLHttpRequest();
-      xhr.open("POST", API_URL);
-      xhr.responseType = "blob";
-
-      xhr.upload.onprogress = e => {
-        if (e.lengthComputable) {
-          const percent = (e.loaded / e.total) * 100;
-          progressBar.style.width = percent + "%";
-          if (percent >= 100) msgText.textContent = "Processing...";
-        }
-      };
-
-      xhr.onload = async () => {
-        spinner.style.display = "none";
-
-        if (xhr.status === 200 && xhr.response) {
-          const blob = xhr.response;
-          const url = URL.createObjectURL(blob);
-          let fileName = "result_" + Date.now();
-
-          const cd = xhr.getResponseHeader("Content-Disposition");
-          if (cd) {
-            const match = cd.match(/filename="?([^"]+)"?/);
-            if (match) fileName = match[1];
-          }
-
-          downloadLink.href = url;
-          downloadLink.download = fileName;
-          downloadLink.style.display = "block";
-          resetBtn.style.display = "block";
-          msgText.textContent = "✅ Success! Click below to download.";
-          return;
-        }
-
-        try {
-          const text = await new Response(xhr.response).text();
-          const json = JSON.parse(text);
-          msgText.textContent = `❌ ${json.error || "Operation failed."}`;
-        } catch {
-          msgText.textContent = "❌ Operation failed.";
-        }
-      };
-
-      xhr.onerror = () => {
-        spinner.style.display = "none";
-        msgText.textContent = "❌ Network or CORS error.";
-      };
-
-      xhr.send(formData);
-    });
-
-    resetBtn.addEventListener("click", () => {
-      fileInput.value = "";
-      filePreview.innerHTML = "";
-      fileInfo.textContent = "";
-      progressBar.style.width = "0%";
-      msgText.textContent = "";
+      const url = URL.createObjectURL(blob);
+      downloadLink.href = url;
+      downloadLink.download = fileName;
+      downloadLink.style.display = "block";
+      resetBtn.style.display = "block";
+      msgText.textContent = "✅ Success! Click below to download.";
+    } catch (err) {
       spinner.style.display = "none";
-      downloadLink.style.display = "none";
-      resetBtn.style.display = "none";
-    });
-  </script>
+      msgText.textContent = "❌ Upload error.";
+    }
+  });
+
+  resetBtn.addEventListener("click", () => {
+    fileInput.value = "";
+    filePreview.innerHTML = "";
+    fileInfo.textContent = "";
+    progressBar.style.width = "0%";
+    msgText.textContent = "";
+    spinner.style.display = "none";
+    downloadLink.style.display = "none";
+    resetBtn.style.display = "none";
+  });
+</script>
+ 
+ 
 </body>
  </html>
  
