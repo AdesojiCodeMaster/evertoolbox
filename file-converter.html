@@ -459,11 +459,6 @@ input[type="text"]:focus {
   </div>
 <script>
   const API_URL = "https://evertoolbox-backend-1.onrender.com/api/tools/file";
-
-	
-  // Backend base URL
-  //const BASE_URL = "https://evertoolbox-backend-1.onrender.com/api/universal-filetool";
-
   let mode = "convert";
 
   const convertTab = document.getElementById("convertTab");
@@ -471,14 +466,11 @@ input[type="text"]:focus {
   const actionBtn = document.getElementById("actionBtn");
   const fileInput = document.getElementById("fileInput");
   const targetFormat = document.getElementById("targetFormat");
-  const filePreview = document.getElementById("filePreview");
-  const fileInfo = document.getElementById("fileInfo");
   const progressBar = document.getElementById("progressBar");
   const spinner = document.getElementById("spinner");
   const msgText = document.getElementById("msgText");
   const downloadLink = document.getElementById("downloadLink");
   const resetBtn = document.getElementById("resetBtn");
-  const form = document.getElementById("fileForm");
 
   convertTab.onclick = () => {
     mode = "convert";
@@ -495,55 +487,7 @@ input[type="text"]:focus {
     actionBtn.textContent = "Compress";
   };
 
-  async function renderPDFThumbnail(file, container) {
-    try {
-      const pdfData = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise;
-      const page = await pdf.getPage(1);
-      const viewport = page.getViewport({ scale: 0.5 });
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
-      await page.render({ canvasContext: ctx, viewport }).promise;
-      container.appendChild(canvas);
-    } catch {
-      container.textContent = "📄 PDF preview unavailable.";
-    }
-  }
-
-  fileInput.addEventListener("change", () => {
-    filePreview.innerHTML = "";
-    fileInfo.textContent = "";
-    const file = fileInput.files[0];
-    if (!file) return;
-
-    const type = file.type;
-    const url = URL.createObjectURL(file);
-
-    if (type.startsWith("image/")) {
-      const img = document.createElement("img");
-      img.src = url;
-      filePreview.appendChild(img);
-    } else if (type.startsWith("video/")) {
-      const vid = document.createElement("video");
-      vid.src = url; vid.controls = true;
-      filePreview.appendChild(vid);
-    } else if (type.startsWith("audio/")) {
-      const aud = document.createElement("audio");
-      aud.src = url; aud.controls = true;
-      filePreview.appendChild(aud);
-    } else if (type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
-      renderPDFThumbnail(file, filePreview);
-    } else {
-      filePreview.textContent = `📄 ${file.name}`;
-    }
-
-    const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-    fileInfo.textContent = `File: ${file.name} (${type || "unknown"}) • ${sizeMB} MB`;
-  });
-
-  form.addEventListener("submit", e => {
+  document.getElementById("fileForm").addEventListener("submit", async e => {
     e.preventDefault();
     const file = fileInput.files[0];
     if (!file) return alert("Please choose a file first.");
@@ -558,72 +502,51 @@ input[type="text"]:focus {
 
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("mode", mode);
     if (mode === "convert") formData.append("targetFormat", targetFormat.value);
 
-    // determine correct endpoint
-    const API_URL = mode === "convert"
-      ? `${BASE_URL}/convert`
-      : `${BASE_URL}/compress`;
-
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", API_URL);
-    xhr.responseType = "blob";
-
-    xhr.upload.onprogress = e => {
-      if (e.lengthComputable) {
-        const percent = (e.loaded / e.total) * 100;
-        progressBar.style.width = percent + "%";
-        if (percent >= 100) msgText.textContent = "Processing...";
-      }
-    };
-
-    xhr.onload = () => {
+    try {
+      const response = await fetch(API_URL, { method: "POST", body: formData });
       spinner.style.display = "none";
-      if (xhr.status === 200) {
-        const blob = xhr.response;
-        const url = URL.createObjectURL(blob);
-        const cd = xhr.getResponseHeader("Content-Disposition");
-        let fileName = "result_" + Date.now();
-        if (cd) {
-          const match = cd.match(/filename="?([^"]+)"?/);
-          if (match) fileName = match[1];
-        }
-        downloadLink.href = url;
-        downloadLink.download = fileName;
-        downloadLink.style.display = "block";
-        resetBtn.style.display = "block";
-        msgText.textContent = "✅ Success! Click below to download.";
-      } else {
-        const reader = new FileReader();
-        reader.onload = () => {
-          try {
-            const json = JSON.parse(reader.result);
-            msgText.textContent = `❌ ${json.error || 'Conversion failed.'}`;
-          } catch {
-            msgText.textContent = "❌ Conversion failed.";
-          }
-        };
-        reader.readAsText(xhr.response);
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        msgText.textContent = `❌ ${errData.error || "Processing failed."}`;
+        return;
       }
-    };
-    xhr.onerror = () => {
+
+      const blob = await response.blob();
+      const cd = response.headers.get("Content-Disposition");
+      let fileName = "result_" + Date.now();
+      if (cd) {
+        const match = cd.match(/filename="?([^"]+)"?/);
+        if (match) fileName = match[1];
+      }
+
+      const url = URL.createObjectURL(blob);
+      downloadLink.href = url;
+      downloadLink.download = fileName;
+      downloadLink.style.display = "block";
+      resetBtn.style.display = "block";
+      msgText.textContent = "✅ Success! Click below to download.";
+    } catch (err) {
       spinner.style.display = "none";
-      msgText.textContent = "❌ Upload error.";
-    };
-    xhr.send(formData);
+      msgText.textContent = "❌ Network or upload error.";
+    }
   });
 
   resetBtn.addEventListener("click", () => {
     fileInput.value = "";
-    filePreview.innerHTML = "";
-    fileInfo.textContent = "";
+    document.getElementById("filePreview").innerHTML = "";
+    document.getElementById("fileInfo").textContent = "";
     progressBar.style.width = "0%";
     msgText.textContent = "";
     spinner.style.display = "none";
     downloadLink.style.display = "none";
     resetBtn.style.display = "none";
   });
-</script> 
+</script>
+	
 </body>
  </html>
  
