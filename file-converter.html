@@ -560,11 +560,19 @@ input[type="text"]:focus {
     xhr.open("POST", API_URL);
     xhr.responseType = "blob";
 
-    xhr.upload.onprogress = e => {
+    xhr.onprogress = e => {
+      // Only update if server sends Content-Length for the response (lengthComputable)
       if (e.lengthComputable) {
-        const percent = (e.loaded / e.total) * 100;
+        // compute combined progress: show a smooth transition from upload to processing
+        // Here we map server response progress to 0-100% (since upload reached 100% already)
+        const percent = Math.min(100, (e.loaded / e.total) * 100);
         progressBar.style.width = percent + "%";
-        if (percent >= 100) msgText.textContent = "Processing...";
+      } else {
+        // If server doesn't send a content-length, show an animated "indeterminate" behaviour:
+        // gently expand/contract progress to indicate activity
+        const current = parseFloat(progressBar.style.width) || 100;
+        const next = current < 95 ? current + 3 : 60;
+        progressBar.style.width = next + "%";
       }
     };
 
