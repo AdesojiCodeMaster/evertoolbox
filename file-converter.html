@@ -458,7 +458,8 @@ input[type="text"]:focus {
     </form>
   </div>
 
-<script>
+
+  <script>
 const API_URL = "https://evertoolbox-backend-1.onrender.com/api/tools/file";
 
 let mode = "convert";
@@ -516,7 +517,10 @@ fileInput.addEventListener("change", () => {
   const file = fileInput.files[0];
   if (!file) return;
   const type = file.type;
+  const name = file.name.toLowerCase();
   const url = URL.createObjectURL(file);
+
+  targetFormat.selectedIndex = 0;
 
   if (type.startsWith("image/")) {
     const img = document.createElement("img");
@@ -533,14 +537,14 @@ fileInput.addEventListener("change", () => {
     aud.src = url; aud.controls = true;
     filePreview.appendChild(aud);
     setAvailableFormats("audio");
-  } else if (type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+  } else if (type === "application/pdf" || name.endsWith(".pdf")) {
     renderPDFThumbnail(file, filePreview);
     setAvailableFormats("pdf");
   } else if (
-    file.name.toLowerCase().endsWith(".docx") ||
-    file.name.toLowerCase().endsWith(".txt") ||
-    file.name.toLowerCase().endsWith(".md") ||
-    file.name.toLowerCase().endsWith(".html")
+    name.endsWith(".docx") ||
+    name.endsWith(".txt") ||
+    name.endsWith(".md") ||
+    name.endsWith(".html")
   ) {
     filePreview.textContent = `📄 ${file.name}`;
     setAvailableFormats("document");
@@ -558,19 +562,34 @@ function setAvailableFormats(category) {
   const groups = targetFormat.querySelectorAll("optgroup");
   groups.forEach(g => g.style.display = "none");
 
-  if (category === "image") {
-    showGroups(["Images"]);
-  } else if (category === "video") {
-    showGroups(["Video"]);
-  } else if (category === "audio") {
-    showGroups(["Audio"]);
-  } else if (category === "pdf") {
-    showGroups(["Images", "Documents"]); // PDF appears in both
-  } else if (category === "document") {
-    showGroups(["Documents"]);
-  } else {
-    showGroups(["Images", "Audio", "Video", "Documents"]);
+  let visibleGroups = [];
+  switch (category) {
+    case "image":
+      visibleGroups = ["Images"];
+      break;
+    case "video":
+      visibleGroups = ["Video"];
+      break;
+    case "audio":
+      visibleGroups = ["Audio"];
+      break;
+    case "pdf":
+      visibleGroups = ["Images", "Documents"]; // PDF = both
+      break;
+    case "document":
+      visibleGroups = ["Documents"];
+      break;
+    default:
+      visibleGroups = ["Images", "Audio", "Video", "Documents"];
   }
+
+  showGroups(visibleGroups);
+
+  // ✅ Auto-select first visible option
+  const firstVisibleOption = Array.from(targetFormat.options).find(
+    opt => opt.offsetParent !== null && opt.value !== ""
+  );
+  if (firstVisibleOption) targetFormat.value = firstVisibleOption.value;
 }
 
 function showGroups(names) {
@@ -580,8 +599,8 @@ function showGroups(names) {
   });
 }
 
-// --- Retry helper with spinner + countdown (10s delay) ---
-async function sendWithRetry(formData, retries = 3, delay = 10000) {
+// --- Retry helper with dynamic delay (5–10s random) ---
+async function sendWithRetry(formData, retries = 3) {
   return new Promise((resolve, reject) => {
     const attempt = (n) => {
       const xhr = new XMLHttpRequest();
@@ -606,7 +625,8 @@ async function sendWithRetry(formData, retries = 3, delay = 10000) {
           try {
             const json = JSON.parse(reader.result);
             if (json.error && json.error.includes("Server busy") && n < retries) {
-              let countdown = delay / 1000;
+              const delay = 5000 + Math.random() * 5000; // random 5–10s
+              let countdown = Math.round(delay / 1000);
               spinner.style.display = "inline-block";
               msgText.textContent = `⚠️ Server busy. Retrying in ${countdown}s...`;
               const interval = setInterval(() => {
@@ -614,10 +634,7 @@ async function sendWithRetry(formData, retries = 3, delay = 10000) {
                 msgText.textContent = `⚠️ Server busy. Retrying in ${countdown}s...`;
                 if (countdown <= 0) clearInterval(interval);
               }, 1000);
-              return setTimeout(() => {
-                spinner.style.display = "inline-block";
-                attempt(n + 1);
-              }, delay);
+              return setTimeout(() => attempt(n + 1), delay);
             }
           } catch {}
           reject(xhr);
@@ -685,7 +702,6 @@ resetBtn.addEventListener("click", () => {
   resetBtn.style.display = "none";
 });
 </script>
- 
 </body>
 </html>
  
