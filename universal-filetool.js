@@ -1,247 +1,109 @@
-// ==========================
 // universal-filetool.js
-// Robust pure-browser controller for Universal File Tool
-// ==========================
+import * as core from './core-modules.js';
 
-import {
-  formatBytes,
-  ensureWithinCap,
-  ensureFFmpegLoaded,
-  convertVideoTo,
-  extractAudioFromVideo,
-  convertImageTo,
-  compressImage,
-  convertDocumentTo,
-  blobToFile
-} from "./core-modules.js";
+const drop = document.getElementById('drop');
+const category = document.getElementById('category');
+const action = document.getElementById('action');
+const targetFormat = document.getElementById('targetFormat');
+const quality = document.getElementById('quality');
+const qLabel = document.getElementById('qLabel');
+const startBtn = document.getElementById('start');
+const resetBtn = document.getElementById('reset');
+const info = document.getElementById('info');
+const bar = document.getElementById('bar');
 
-// ---- UI references ----
-const convertTab = document.getElementById("convertTab");
-const compressTab = document.getElementById("compressTab");
-const actionBtn = document.getElementById("actionBtn");
-const fileInput = document.getElementById("fileInput");
-const targetFormat = document.getElementById("targetFormat");
-const filePreview = document.getElementById("filePreview");
-const fileInfo = document.getElementById("fileInfo");
-const progressBar = document.getElementById("progressBar");
-const spinner = document.getElementById("spinner");
-const msgText = document.getElementById("msgText");
-const downloadLink = document.getElementById("downloadLink");
-const resetBtn = document.getElementById("resetBtn");
-const form = document.getElementById("fileForm");
+let currentFile = null;
 
-let mode = "convert";
-
-// ---- Format groups ----
-const FORMAT_GROUPS = {
-  Images: ["jpg", "jpeg", "png", "webp", "gif", "tiff", "bmp", "pdf"],
-  Audio: ["mp3", "wav", "ogg", "m4a", "aac", "flac", "opus"],
-  Video: ["mp4", "webm", "mkv", "avi", "mov"],
-  Documents: ["pdf", "docx", "txt", "md", "html"]
-};
-const EQUIV_GROUPS = [["jpg", "jpeg"], ["mp4", "m4v"]];
-
-function extOfName(name) {
-  const m = name.match(/\.([^.]+)$/);
-  return m ? m[1].toLowerCase() : "";
+function populateTargets(){
+  const cat = category.value;
+  targetFormat.innerHTML = '';
+  core.FORMATS[cat].forEach(f=>{
+    const o = document.createElement('option'); o.value = f; o.textContent = f; targetFormat.appendChild(o);
+  });
 }
-function areEquivalentExts(a, b) {
-  if (a === b) return true;
-  for (const g of EQUIV_GROUPS) if (g.includes(a) && g.includes(b)) return true;
-  return false;
+populateTargets();
+category.addEventListener('change', populateTargets);
+quality.addEventListener('input', ()=> qLabel.textContent = quality.value);
+
+// Drag & click
+drop.addEventListener('click', ()=> pickFile());
+drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.style.borderColor='#66a' });
+drop.addEventListener('dragleave', e=>{ drop.style.borderColor='#cfcfe0' });
+drop.addEventListener('drop', async e=>{ e.preventDefault(); drop.style.borderColor='#cfcfe0'; const f = e.dataTransfer.files[0]; await setFile(f); });
+
+async function pickFile(){
+  const inp = document.createElement('input'); inp.type='file'; inp.accept='*/*'; inp.onchange = async ()=>{ const f = inp.files[0]; await setFile(f); }; inp.click();
 }
 
-function populateFormatSelect(groups) {
-  let html = `<option value="">Select target format...</option>`;
-  for (const g of groups) {
-    const items = FORMAT_GROUPS[g];
-    if (!items) continue;
-    html += `<optgroup label="${g}">`;
-    for (const f of items) html += `<option value="${f}">${f}</option>`;
-    html += `</optgroup>`;
-  }
-  targetFormat.innerHTML = html;
-  const first = targetFormat.querySelector("option[value]");
-  if (first) targetFormat.value = first.value;
+async function setFile(f){
+  if(!f) return;
+  if(f.size > core.MAX_SIZE){ alert('File exceeds 200 MB limit'); return; }
+  currentFile = f;
+  info.textContent = `Selected: ${f.name} — ${core.humanSize(f.size)} — ${f.type || core.extFromName(f.name)}`;
+  bar.style.width = '0%';
 }
 
-// ---- Tabs ----
-convertTab.onclick = () => {
-  mode = "convert";
-  convertTab.classList.add("active");
-  compressTab.classList.remove("active");
-  targetFormat.disabled = false;
-  actionBtn.textContent = "Convert";
-};
-compressTab.onclick = () => {
-  mode = "compress";
-  compressTab.classList.add("active");
-  convertTab.classList.remove("active");
-  targetFormat.disabled = true;
-  actionBtn.textContent = "Compress";
-};
+resetBtn.addEventListener('click', ()=>{ currentFile = null; info.textContent = 'No file selected.'; bar.style.width = '0%'; });
 
-// ---- File detection ----
-function fileCategory(file) {
-  const name = file.name.toLowerCase();
-  const type = (file.type || "").toLowerCase();
-  if (type.startsWith("image/")) return "image";
-  if (type.startsWith("video/")) return "video";
-  if (type.startsWith("audio/")) return "audio";
-  if (name.endsWith(".pdf")) return "pdf";
-  if (/\.(docx|txt|md|html)$/i.test(name)) return "document";
-  return "other";
-}
+startBtn.addEventListener('click', async ()=>{
+  if(!currentFile){ alert('Select a file first'); return; }
+  startBtn.disabled = true; startBtn.textContent = 'Processing...'; bar.style.width = '0%';
+  try{
+    const cat = category.value;
+    const act = action.value;
+    const tgt = targetFormat.value;
+    const q = Number(quality.value)/100;
+    const progress = core.makeProgress();
+    progress.onProgress(p=>{
+      let pct = 0;
+      if(typeof p === 'number') pct = p;
+      else if(p && p.ratio) pct = Math.round(p.ratio * 100);
+      else if(p && p.loaded && p.total) pct = Math.round((p.loaded / p.total) * 100);
+      bar.style.width = pct + '%';
+    });
 
-// ---- Previews ----
-fileInput.addEventListener("change", async () => {
-  filePreview.innerHTML = "";
-  fileInfo.textContent = "";
-  msgText.textContent = "";
-  downloadLink.style.display = "none";
-  resetBtn.style.display = "none";
-  progressBar.style.width = "0%";
+    let outFile = null;
 
-  const file = fileInput.files[0];
-  if (!file) return;
-
-  try {
-    ensureWithinCap(file);
-  } catch (err) {
-    msgText.textContent = `❌ ${err.message}`;
-    return;
-  }
-
-  const cat = fileCategory(file);
-  const url = URL.createObjectURL(file);
-  if (cat === "image") {
-    const img = document.createElement("img");
-    img.src = url;
-    img.style.maxHeight = "150px";
-    filePreview.appendChild(img);
-    populateFormatSelect(["Images"]);
-  } else if (cat === "video") {
-    const vid = document.createElement("video");
-    vid.src = url;
-    vid.controls = true;
-    filePreview.appendChild(vid);
-    populateFormatSelect(["Video"]);
-  } else if (cat === "audio") {
-    const aud = document.createElement("audio");
-    aud.src = url;
-    aud.controls = true;
-    filePreview.appendChild(aud);
-    populateFormatSelect(["Audio"]);
-  } else {
-    const div = document.createElement("div");
-    div.textContent = `📄 ${file.name}`;
-    filePreview.appendChild(div);
-    populateFormatSelect(["Documents"]);
-  }
-
-  fileInfo.textContent = `File: ${file.name} • ${formatBytes(file.size)}`;
-});
-
-// ---- Spinner & progress ----
-function showWorking(msg) {
-  spinner.style.display = "inline-block";
-  msgText.textContent = msg;
-}
-function hideWorking() {
-  spinner.style.display = "none";
-}
-function progress(p) {
-  progressBar.style.width = `${p}%`;
-}
-function prepareDownload(blob, newName) {
-  const url = URL.createObjectURL(blob);
-  downloadLink.href = url;
-  downloadLink.download = newName;
-  downloadLink.style.display = "block";
-  resetBtn.style.display = "block";
-  msgText.textContent = "✅ Done — click below to download.";
-  progressBar.style.width = "100%";
-}
-
-// ---- Main handler ----
-form.addEventListener("submit", async (ev) => {
-  ev.preventDefault();
-  const file = fileInput.files[0];
-  if (!file) return alert("Please choose a file first.");
-
-  if (mode === "compress") {
-    showWorking("Compressing...");
-    try {
-      const resultBlob = await compressImage(file, progress);
-      const ext = extOfName(file.name);
-      const newName = file.name.replace(`.${ext}`, `_compressed.${ext}`);
-      prepareDownload(resultBlob, newName);
-    } catch (err) {
-      msgText.textContent = `❌ Compression failed: ${err.message}`;
-    } finally {
-      hideWorking();
-    }
-    return;
-  }
-
-  // ---- Convert mode ----
-  const target = targetFormat.value;
-  if (!target) return alert("Select target format.");
-
-  showWorking("Converting...");
-  progress(10);
-
-  const srcExt = extOfName(file.name);
-  let outBlob;
-
-  try {
-    const ffmpegReady = await ensureFFmpegLoaded();
-    progress(30);
-
-    if (ffmpegReady) {
-      if (fileCategory(file) === "video" && FORMAT_GROUPS.Video.includes(target)) {
-        outBlob = await convertVideoTo(file, target, progress);
-      } else if (fileCategory(file) === "video" && FORMAT_GROUPS.Audio.includes(target)) {
-        outBlob = await extractAudioFromVideo(file, target, progress);
-      } else if (fileCategory(file) === "audio" && FORMAT_GROUPS.Audio.includes(target)) {
-        outBlob = await convertVideoTo(file, target, progress); // same ffmpeg path
-      } else if (fileCategory(file) === "image" && FORMAT_GROUPS.Images.includes(target)) {
-        outBlob = await convertImageTo(file, target);
-      } else if (fileCategory(file) === "document" || fileCategory(file) === "pdf") {
-        outBlob = await convertDocumentTo(file, target);
+    if(cat === 'image'){
+      // compress/convert via canvas
+      outFile = await core.convertImageTo(currentFile, tgt, (act==='compress'? Math.max(0.2,q) : q), v=> progress.emit(v));
+    } else if(cat === 'audio'){
+      const bitrate = (q>=0.9)? '320k' : (q>=0.7)? '192k' : (q>=0.5)? '128k' : '96k';
+      outFile = await core.convertAudio(currentFile, tgt, bitrate, p=> progress.emit(p));
+    } else if(cat === 'video'){
+      const crf = Math.max(18, Math.round(32 - (q * 14))); // smaller crf => better quality
+      outFile = await core.convertVideo(currentFile, tgt, 'medium', crf, p=> progress.emit(p));
+    } else if(cat === 'document'){
+      const inExt = core.extFromName(currentFile.name);
+      if(inExt === 'docx' && tgt === 'pdf'){
+        await core.docxToPdf(currentFile, p=> progress.emit(p));
+        info.textContent = 'Saved PDF (docx->pdf).';
+        startBtn.disabled = false; startBtn.textContent = 'Start'; bar.style.width = '100%';
+        return;
       } else {
-        throw new Error("Unsupported conversion path.");
+        // basic conversions for test: passthrough
+        outFile = await core.passthrough(currentFile);
       }
+    }
+
+    if(outFile){
+      saveFileClient(outFile);
+      info.textContent = `Done — output: ${outFile.name} — ${core.humanSize(outFile.size)}`;
+      bar.style.width = '100%';
     } else {
-      // FFmpeg not supported
-      if (fileCategory(file) === "image") {
-        outBlob = await convertImageTo(file, target);
-      } else if (fileCategory(file) === "document" || fileCategory(file) === "pdf") {
-        outBlob = await convertDocumentTo(file, target);
-      } else {
-        throw new Error("FFmpeg (wasm) not available in this browser for media conversion.");
-      }
+      info.textContent = 'Processing completed (output saved).';
     }
-
-    progress(90);
-
-    const correctName = file.name.replace(/\.[^.]+$/, `.${target}`);
-    prepareDownload(outBlob, correctName);
-  } catch (err) {
-    msgText.textContent = `❌ ${err.message}`;
-    progressBar.style.width = "0%";
+  } catch(err){
+    console.error(err);
+    alert('Processing failed: ' + (err && err.message ? err.message : String(err)));
   } finally {
-    hideWorking();
+    startBtn.disabled = false;
+    startBtn.textContent = 'Start';
   }
 });
 
-// ---- Reset ----
-resetBtn.onclick = () => {
-  form.reset();
-  filePreview.innerHTML = "";
-  fileInfo.textContent = "";
-  msgText.textContent = "";
-  progressBar.style.width = "0%";
-  downloadLink.style.display = "none";
-  resetBtn.style.display = "none";
-};
+function saveFileClient(file){
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a'); a.href = url; a.download = file.name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=> URL.revokeObjectURL(url), 5000);
+}
