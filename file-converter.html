@@ -796,81 +796,83 @@ populateFormatSelect(["Images","Audio","Video","Documents"]);
  -->
 
 
-<!DOCTYPE html>
+
+  
+  
+  
+  
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>EverToolbox – Universal File Converter & Compressor</title>
- <!-- ffmpeg.wasm CDN -->
-<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.7/dist/ffmpeg.min.js"></script>
-  
-  <!-- pdf.js for PDF thumbnail rendering (kept from your version) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-
+  <title>Universal Converter & Compressor — Test</title>
   <style>
-    /* (kept your styling, minimal cleanup) */
-    body { font-family: "Segoe UI", Roboto, sans-serif; background: #f9fafb; color: #111827; display:flex; flex-direction:column; align-items:center; padding:40px; }
-    h1{ font-size:1.8rem; margin-bottom:0.5rem; text-align:center; }
-    .tab-container{ display:flex; margin-bottom:20px; gap:10px; }
-    .tab-btn{ padding:10px 20px; border:none; border-radius:8px; cursor:pointer; font-weight:600; color:#fff; transition:all .25s; }
-    .tab-btn.convert{ background:#2563eb; } .tab-btn.convert:hover{ background:#1d4ed8; }
-    .tab-btn.compress{ background:#16a34a; } .tab-btn.compress:hover{ background:#15803d; }
-    .tab-btn.active{ transform:scale(1.05); box-shadow:0 0 6px rgba(0,0,0,.25); }
-    .tool-box{ width:100%; max-width:520px; background:#fff; border-radius:12px; box-shadow:0 3px 10px rgba(0,0,0,.1); padding:25px; text-align:center; }
-    input[type=file]{ display:none; }
-    .file-label{ display:block; background:#e5e7eb; padding:12px; border-radius:8px; cursor:pointer; margin-bottom:15px; font-weight:500; }
-    .file-preview{ margin:10px 0; }
-    .file-preview img,.file-preview video,.file-preview audio,.file-preview canvas{ max-width:100%; max-height:180px; border-radius:10px; margin-top:10px; border:1px solid #d1d5db; }
-    .file-info{ margin-top:5px; font-size:.9rem; color:#555; }
-    select, button{ padding:10px; border-radius:8px; border:1px solid #d1d5db; margin:8px 0; width:100%; }
-    button{ background:#2563eb; color:#fff; font-weight:bold; border:none; cursor:pointer; transition:background .3s; }
-    button:hover{ background:#1e40af; }
-    .progress-container{ margin:15px 0; width:100%; background:#f3f4f6; border-radius:8px; overflow:hidden; height:8px; }
-    .progress-bar{ height:100%; background-color:#2563eb; width:0; transition:width .3s; }
-    .message{ margin-top:10px; font-weight:600; display:flex; align-items:center; justify-content:center; gap:6px; }
-    .spinner{ border:3px solid #cbd5e1; border-top:3px solid #2563eb; border-radius:50%; width:18px; height:18px; animation:spin 1s linear infinite; display:none; }
-    @keyframes spin{ 0%{ transform:rotate(0deg); } 100%{ transform:rotate(360deg); } }
-    .download-btn,.reset-btn{ display:none; border:none; border-radius:8px; padding:10px; margin-top:10px; width:100%; font-weight:600; color:#fff; }
-    .download-btn{ background:#15803d; } .download-btn:hover{ background:#166534; }
-    .reset-btn{ background:#6b7280; } .reset-btn:hover{ background:#4b5563; }
-    .small { font-size:0.85rem; color:#6b7280; margin-top:8px; }
+    :root{font-family:system-ui,Segoe UI,Roboto,Arial;color:#111}
+    body{padding:18px;max-width:980px;margin:0 auto;background:#f7f7f9}
+    header{display:flex;align-items:center;justify-content:space-between}
+    h1{font-size:20px;margin:0}
+    .panel{margin-top:14px;padding:12px;border-radius:10px;background:#fff;border:1px solid #e6e6ea}
+    .drop{border:2px dashed #cfcfe0;padding:18px;border-radius:8px;text-align:center;cursor:pointer}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    select,input,button{padding:8px;border-radius:6px;border:1px solid #ccc;background:white}
+    button.primary{background:#1f6feb;color:#fff;border:none}
+    .progress{height:10px;background:#f1f1f1;border-radius:6px;overflow:hidden;margin-top:8px}
+    .progress > i{display:block;height:100%;width:0%;background:#16a34a;transition:width 200ms}
+    .note{font-size:13px;color:#666;margin-top:8px}
+    .footer{margin-top:12px;font-size:13px;color:#333}
+    @media (max-width:640px){ .controls{flex-direction:column} }
   </style>
 </head>
 <body>
-  <h1>⚙️ EverToolbox Converter & Compressor</h1>
+  <header>
+    <h1>Universal Converter & Compressor (Test)</h1>
+    <div>Max file: <strong>200 MB</strong> • Single file</div>
+  </header>
 
-  <div class="tab-container">
-    <button class="tab-btn convert active" id="convertTab">Convert Files</button>
-    <button class="tab-btn compress" id="compressTab">Compress Files</button>
-  </div>
+  <div class="panel">
+    <div id="drop" class="drop">Click or drop a single file here (max 200 MB)</div>
 
-  <div class="tool-box">
-    <form id="fileForm" novalidate>
-      <label class="file-label" for="fileInput">📂 Choose a file</label>
-      <input type="file" id="fileInput" name="file" required />
-      <div class="file-preview" id="filePreview"></div>
-      <div class="file-info" id="fileInfo"></div>
-
-      <select id="targetFormat" required>
-        <option value="">Select target format...</option>
+    <div class="controls" style="margin-top:12px">
+      <select id="category" title="Category">
+        <option value="image">Image</option>
+        <option value="document">Document</option>
+        <option value="audio">Audio</option>
+        <option value="video">Video</option>
       </select>
 
-      <button type="submit" id="actionBtn">Convert</button>
+      <select id="action" title="Action">
+        <option value="convert">Convert</option>
+        <option value="compress">Compress (aggressive)</option>
+      </select>
 
-      <div class="progress-container"><div class="progress-bar" id="progressBar"></div></div>
-      <div class="message" id="message"><div class="spinner" id="spinner"></div><span id="msgText"></span></div>
+      <select id="targetFormat" title="Target format"></select>
 
-      <a id="downloadLink" class="download-btn" download>⬇️ Download Result</a>
-      <button type="button" id="resetBtn" class="reset-btn">🔄 Reset</button>
+      <label style="display:flex;align-items:center;gap:8px">
+        <input id="quality" type="range" min="10" max="100" value="75">
+        <span id="qLabel">75</span>%
+      </label>
 
-      <div class="small">Max upload: <strong>200 MB</strong>. Recommended: ≤ 80 MB for videos on tablets.</div>
-    </form>
+      <button id="start" class="primary">Start</button>
+      <button id="reset">Reset</button>
+    </div>
+
+    <div id="info" class="note">No file selected.</div>
+    <div class="progress"><i id="bar"></i></div>
   </div>
 
-  <!-- main module (loads universal-filetool.js) -->
+  <div class="footer">
+    <strong>Supported formats (in-category interconversion):</strong>
+    <ul>
+      <li>Images: png, jpg/jpeg, webp, gif, bmp, svg</li>
+      <li>Audio: mp3, wav, m4a, ogg, flac</li>
+      <li>Video: mp4, webm, mov, mkv, ogg</li>
+      <li>Documents: pdf, docx, txt, md, html, rtf, odt (limited)</li>
+    </ul>
+  </div>
+
+  <script type="module" src="./core-modules.js"></script>
   <script type="module" src="./universal-filetool.js"></script>
 </body>
   </html>
-          
-  
+    
