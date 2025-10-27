@@ -800,40 +800,44 @@ populateFormatSelect(["Images","Audio","Video","Documents"]);
   
   
   
-  
-<!doctype html>
+  <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Universal Converter & Compressor — Test</title>
+  <title>Universal Converter & Compressor — Browser</title>
   <style>
     :root{font-family:system-ui,Segoe UI,Roboto,Arial;color:#111}
-    body{padding:18px;max-width:980px;margin:0 auto;background:#f7f7f9}
-    header{display:flex;align-items:center;justify-content:space-between}
-    h1{font-size:20px;margin:0}
-    .panel{margin-top:14px;padding:12px;border-radius:10px;background:#fff;border:1px solid #e6e6ea}
-    .drop{border:2px dashed #cfcfe0;padding:18px;border-radius:8px;text-align:center;cursor:pointer}
-    .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-    select,input,button{padding:8px;border-radius:6px;border:1px solid #ccc;background:white}
-    button.primary{background:#1f6feb;color:#fff;border:none}
-    .progress{height:10px;background:#f1f1f1;border-radius:6px;overflow:hidden;margin-top:8px}
-    .progress > i{display:block;height:100%;width:0%;background:#16a34a;transition:width 200ms}
-    .note{font-size:13px;color:#666;margin-top:8px}
-    .footer{margin-top:12px;font-size:13px;color:#333}
-    @media (max-width:640px){ .controls{flex-direction:column} }
+    body{padding:18px;max-width:980px;margin:0 auto;background:#f6f7fb}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    h1{font-size:18px;margin:0}
+    .card{margin-top:14px;padding:14px;border-radius:12px;background:#fff;border:1px solid #e6e9ef;box-shadow:0 1px 4px rgba(20,20,40,0.03)}
+    .drop{border:2px dashed #d6d9e6;padding:18px;border-radius:10px;text-align:center;cursor:pointer;transition:border-color .12s}
+    .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+    select,input,button{padding:8px;border-radius:8px;border:1px solid #cfd6e3;background:white;font-size:14px}
+    button.primary{background:#0b69ff;color:#fff;border:none;padding:8px 12px}
+    button.ghost{background:transparent;border:1px solid #cfd6e3}
+    .progress{height:10px;background:#f1f3f7;border-radius:8px;overflow:hidden;margin-top:10px}
+    .progress > i{display:block;height:100%;width:0%;background:#16a34a;transition:width 160ms linear}
+    .meta{margin-top:10px;font-size:13px;color:#4a5568}
+    footer{margin-top:18px;font-size:13px;color:#444}
+    @media (max-width:640px){ .controls{flex-direction:column;align-items:stretch} .controls > *{width:100%} }
+    ul.formats{margin:8px 0 0 18px;color:#333}
   </style>
 </head>
 <body>
   <header>
-    <h1>Universal Converter & Compressor (Test)</h1>
-    <div>Max file: <strong>200 MB</strong> • Single file</div>
+    <h1>Universal Converter & Compressor</h1>
+    <div><strong>Max</strong> 200 MB • Single file</div>
   </header>
 
-  <div class="panel">
-    <div id="drop" class="drop">Click or drop a single file here (max 200 MB)</div>
+  <main class="card" role="main" aria-labelledby="title">
+    <div id="drop" class="drop" tabindex="0" aria-label="Drop or click to pick a file">
+      Click or drop a single file here
+      <div style="margin-top:8px;font-size:13px;color:#6b7280">Supported categories: Image • Audio • Video • Document</div>
+    </div>
 
-    <div class="controls" style="margin-top:12px">
+    <div class="controls" role="region" aria-label="controls">
       <select id="category" title="Category">
         <option value="image">Image</option>
         <option value="document">Document</option>
@@ -849,30 +853,32 @@ populateFormatSelect(["Images","Audio","Video","Documents"]);
       <select id="targetFormat" title="Target format"></select>
 
       <label style="display:flex;align-items:center;gap:8px">
-        <input id="quality" type="range" min="10" max="100" value="75">
+        <input id="quality" type="range" min="10" max="100" value="75" aria-label="Quality">
         <span id="qLabel">75</span>%
       </label>
 
       <button id="start" class="primary">Start</button>
-      <button id="reset">Reset</button>
+      <button id="reset" class="ghost">Reset</button>
     </div>
 
-    <div id="info" class="note">No file selected.</div>
-    <div class="progress"><i id="bar"></i></div>
-  </div>
+    <div id="info" class="meta">No file selected.</div>
+    <div class="progress" aria-hidden="false" role="progressbar"><i id="bar"></i></div>
+    <div id="filespec" class="meta"></div>
+  </main>
 
-  <div class="footer">
-    <strong>Supported formats (in-category interconversion):</strong>
-    <ul>
+  <footer>
+    <strong>Formats (in-category interconversion):</strong>
+    <ul class="formats">
       <li>Images: png, jpg/jpeg, webp, gif, bmp, svg</li>
       <li>Audio: mp3, wav, m4a, ogg, flac</li>
       <li>Video: mp4, webm, mov, mkv, ogg</li>
-      <li>Documents: pdf, docx, txt, md, html, rtf, odt (limited)</li>
+      <li>Docs: pdf, docx, txt, md, html, rtf, odt (limited)</li>
     </ul>
-  </div>
+    <div style="margin-top:8px;color:#6b7280">This test build uses CDN-hosted WASM/libs for quick verification on GitHub Pages. For production, vendor libs locally (optional).</div>
+  </footer>
 
   <script type="module" src="./core-modules.js"></script>
   <script type="module" src="./universal-filetool.js"></script>
 </body>
-  </html>
-    
+</html>
+          
