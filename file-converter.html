@@ -833,8 +833,9 @@ populateFormatSelect(["Images","Audio","Video","Documents"]);
 
   <main class="card" role="main" aria-labelledby="title">
     <div id="drop" class="drop" tabindex="0" aria-label="Drop or click to pick a file">
-      Click or drop a single file here
-      <div style="margin-top:8px;font-size:13px;color:#6b7280">Supported categories: Image • Audio • Video • Document</div>
+     Click or drop a single file here
+      <input type="file" id="fileInput" hidden />
+       <div style="margin-top:8px;font-size:13px;color:#6b7280">Supported categories: Image • Audio • Video • Document</div>
     </div>
 
     <div class="controls" role="region" aria-label="controls">
