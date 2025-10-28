@@ -107,6 +107,19 @@ startBtn.addEventListener('click', async () => {
     startBtn.disabled = false; startBtn.textContent = 'Start';
   }
 });
+// Universal FileTool – upload handler fix
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('fileInput');
+const info = document.getElementById('info');
+
+drop.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  info.textContent = `Selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+});
+      
+
 
 function saveFileClient(file){
   const url = URL.createObjectURL(file);
